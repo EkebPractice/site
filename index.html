@@ -1,1 +1,1751 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Практика EKEB / EKEB Тәжірибе</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #0a0e1a;
+            --card: #12182a;
+            --accent: #00e5ff;
+            --accent2: #00b8d4;
+            --text: #e0e6f0;
+            --text-dim: #8b95a8;
+            --border: #1e2a44;
+            --success: #00c853;
+            --warning: #ffab00;
+            --danger: #ff5252;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', 'Noto Sans', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding-bottom: 90px;
+        }
+        .header {
+            background: linear-gradient(135deg, #0d1428, #1a2340);
+            padding: 16px 20px 12px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .logo {
+            font-weight: 700;
+            font-size: 18px;
+            background: linear-gradient(90deg, var(--accent), #64b5f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .lang-switch {
+            display: flex;
+            background: var(--card);
+            border-radius: 20px;
+            padding: 4px;
+            border: 1px solid var(--border);
+        }
+        .lang-btn {
+            padding: 6px 14px;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .lang-btn.active { background: var(--accent); color: #000; }
+        h1 { font-size: 19px; font-weight: 700; }
+        .subtitle { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+        .tabs {
+            display: flex;
+            margin-top: 12px;
+            background: var(--card);
+            border-radius: 12px;
+            padding: 4px;
+            border: 1px solid var(--border);
+        }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-dim);
+        }
+        .tab.active { background: var(--accent); color: #000; }
+        .filters, .org-filters {
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .filter-row { display: flex; gap: 8px; }
+        select, input, textarea {
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            flex: 1;
+            outline: none;
+            font-family: inherit;
+        }
+        select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+        .stats {
+            display: flex;
+            gap: 8px;
+            padding: 0 16px 10px;
+        }
+        .stat {
+            flex: 1;
+            background: var(--card);
+            padding: 10px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        .stat-num { font-size: 18px; font-weight: 700; color: var(--accent); }
+        .stat-label { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+        .list { padding: 0 12px; display: flex; flex-direction: column; gap: 10px; }
+        .card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 14px;
+            border: 1px solid var(--border);
+        }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .student-name { font-size: 15px; font-weight: 600; }
+        .course-badge {
+            background: rgba(0, 229, 255, 0.15);
+            color: var(--accent);
+            padding: 3px 8px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .specialization { font-size: 12px; color: var(--accent2); margin-bottom: 6px; }
+        .practice-place {
+            font-size: 13px;
+            margin-bottom: 8px;
+            padding: 7px 10px;
+            background: rgba(0, 200, 83, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid var(--success);
+        }
+        .dates { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px; }
+        .date-item { background: rgba(255,255,255,0.03); padding: 6px 8px; border-radius: 8px; }
+        .date-label { color: var(--text-dim); font-size: 10px; }
+        .group-header {
+            padding: 10px 16px 2px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .empty { text-align: center; padding: 40px 20px; color: var(--text-dim); }
+        .fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,229,255,0.4);
+            z-index: 100;
+        }
+        .export-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            padding: 12px 18px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            z-index: 100;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 200;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: #0f1525;
+            width: 100%;
+            max-width: 520px;
+            border-radius: 20px 20px 0 0;
+            padding: 18px 16px 30px;
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .close-btn { background: none; border: none; color: var(--text); font-size: 26px; cursor: pointer; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; }
+        .btn { width: 100%; padding: 13px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 6px; }
+        .btn-primary { background: var(--accent); color: #000; }
+        .btn-secondary { background: var(--border); color: var(--text); }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .org-card .org-type { font-size: 11px; color: var(--warning); font-weight: 600; }
+        .org-actions { display: flex; gap: 8px; margin-top: 10px; }
+        .small-btn { padding: 6px 10px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; }
+        .section-title { font-size: 13px; font-weight: 600; color: var(--accent); margin: 8px 0 4px; }
+
+        .referral-bar {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px dashed var(--border);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .ref-btn {
+            padding: 6px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 229, 255, 0.35);
+            background: rgba(0, 229, 255, 0.08);
+            color: var(--accent);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: background 0.15s;
+        }
+        .ref-btn:hover { background: rgba(0, 229, 255, 0.2); }
+        .ref-btn.kk {
+            border-color: rgba(0, 200, 83, 0.4);
+            background: rgba(0, 200, 83, 0.1);
+            color: var(--success);
+        }
+        .ref-btn.kk:hover { background: rgba(0, 200, 83, 0.22); }
+        .modal-referral-box {
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(0, 229, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        .modal-referral-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+        .modal-referral-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .group-folder-card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 14px;
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+        }
+        .group-folder-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            gap: 8px;
+        }
+        .group-folder-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .group-folder-badge {
+            background: rgba(0, 200, 83, 0.15);
+            color: var(--success);
+            padding: 3px 9px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .group-folder-body {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px dashed var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .saved-ref-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .plan-config-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px;
+            margin: 0 12px 14px;
+        }
+        .plan-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .plan-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px;
+        }
+        .plan-item label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent2);
+            margin-bottom: 6px;
+        }
+        .plan-item input {
+            width: 100%;
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+    <div class="header">
+        <div class="header-top">
+            <div class="logo">EKEB</div>
+            <div class="lang-switch">
+                <button class="lang-btn active" data-lang="ru">RU</button>
+                <button class="lang-btn" data-lang="kk">KK</button>
+            </div>
+        </div>
+        <h1 id="app-title">Практика студентов</h1>
+        <div class="subtitle" id="app-subtitle">Студенты и организации</div>
+        <div class="tabs">
+            <div class="tab active" data-tab="students" id="tab-students">Студенты</div>
+            <div class="tab" data-tab="referrals" id="tab-referrals">Направления</div>
+            <div class="tab" data-tab="orgs" id="tab-orgs">Организации</div>
+            <div class="tab" data-tab="map" id="tab-map">Карта 2GIS</div>
+        </div>
+    </div>
+
+    <!-- STUDENTS VIEW -->
+    <div id="view-students">
+        <div class="filters">
+            <div class="filter-row">
+                <select id="filter-course">
+                    <option value="all">Все курсы</option>
+                    <option value="2">2 курс</option>
+                    <option value="3">3 курс</option>
+                </select>
+                <select id="filter-spec">
+                    <option value="all">Все направления</option>
+                </select>
+            </div>
+            <select id="filter-org">
+                <option value="all">Все организации</option>
+            </select>
+            <div class="filter-row">
+                <input type="text" id="search" placeholder="Поиск по ФИО...">
+                <select id="filter-group"><option value="all">Все группы</option></select>
+            </div>
+        </div>
+        <div class="stats">
+            <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label" id="lbl-total">Всего</div></div>
+            <div class="stat"><div class="stat-num" id="stat-filtered">0</div><div class="stat-label" id="lbl-shown">Показано</div></div>
+            <div class="stat"><div class="stat-num" id="stat-groups">0</div><div class="stat-label" id="lbl-groups">Групп</div></div>
+        </div>
+        <div id="student-list" class="list"></div>
+    </div>
+
+    <!-- REFERRALS BY GROUP VIEW -->
+    <div id="view-referrals" style="display:none;">
+        <div class="plan-config-box">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                <div style="font-size:13px;font-weight:700;color:var(--accent);" id="plan-box-title">📅 Согласование рабочего учебного плана по курсам (дата в направлении)</div>
+                <button type="button" class="small-btn" id="btn-save-plans" style="background:var(--accent);color:#000;border:none;font-weight:600;">Сохранить даты</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:4px;" id="plan-box-desc">Дата согласования рабочего плана подставляется в документ направления в зависимости от курса (года поступления) студента.</div>
+            <div class="plan-grid">
+                <div class="plan-item">
+                    <label id="lbl-plan-1">1 курс (поступление 2025 г.)</label>
+                    <input type="date" id="plan-date-1" value="2025-08-30">
+                </div>
+                <div class="plan-item">
+                    <label id="lbl-plan-2">2 курс (поступление 2024 г.)</label>
+                    <input type="date" id="plan-date-2" value="2024-08-30">
+                </div>
+                <div class="plan-item">
+                    <label id="lbl-plan-3">3 курс (поступление 2023 г.)</label>
+                    <input type="date" id="plan-date-3" value="2023-08-30">
+                </div>
+                <div class="plan-item">
+                    <label id="lbl-plan-4">4 курс (поступление 2022 г.)</label>
+                    <input type="date" id="plan-date-4" value="2022-08-30">
+                </div>
+            </div>
+        </div>
+        <div class="filters" style="padding-top:0;">
+            <div class="filter-row">
+                <select id="ref-filter-group"><option value="all">Все ячейки групп</option></select>
+                <input type="text" id="ref-search" placeholder="Поиск по ФИО или организации...">
+            </div>
+        </div>
+        <div id="referral-groups-list" class="list"></div>
+    </div>
+
+    <!-- ORGANIZATIONS VIEW -->
+    <div id="view-orgs" style="display:none;">
+        <div class="org-filters">
+            <input type="text" id="org-search" placeholder="Поиск организации...">
+        </div>
+        <div id="org-list" class="list"></div>
+    </div>
+
+    <!-- MAP VIEW -->
+    <div id="view-map" style="display:none;">
+        <div id="aktobe-map" style="height:480px;width:100%;border-bottom:1px solid var(--border);"></div>
+        <div style="padding:12px 16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
+                <div style="font-weight:600;">Места практики · Актобе</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="small-btn" id="btn-open-2gis-city" style="background:var(--accent);color:#000;border:none;font-weight:600;">Открыть 2ГИС Актобе</button>
+                    <button class="small-btn" id="btn-open-court" style="border-color:var(--warning);color:var(--warning);">Областной суд</button>
+                </div>
+            </div>
+            <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Нажмите маркер или строку — откроется карточка в 2ГИС. Карта города с точками практики.</div>
+            <div id="map-places"></div>
+        </div>
+    </div>
+
+    <button class="fab" id="add-btn">+</button>
+    <button class="export-btn" id="export-btn">Excel</button>
+
+    <!-- STUDENT MODAL -->
+    <div class="modal" id="student-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="student-modal-title">Добавить студента</h2>
+                <button class="close-btn" data-close="student-modal">&times;</button>
+            </div>
+            <div class="form-group"><label>Фамилия</label><input type="text" id="s-surname"></div>
+            <div class="form-group"><label>Имя</label><input type="text" id="s-name"></div>
+            <div class="form-group"><label>Отчество</label><input type="text" id="s-patronymic"></div>
+            <div class="form-group"><label>Курс (определяет дату согласования рабочего плана)</label>
+                <select id="s-course">
+                    <option value="1">1 курс</option>
+                    <option value="2" selected>2 курс</option>
+                    <option value="3">3 курс</option>
+                    <option value="4">4 курс</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Группа (ячейка сохранения направления)</label><input type="text" id="s-group" placeholder="0-204 / T118 / P207"></div>
+            <div class="form-group"><label>Дата согласования рабочего плана (подставляется по курсу)</label><input type="date" id="s-plan-date"></div>
+            <div class="form-group"><label>Направление</label><select id="s-spec"></select></div>
+            <div class="form-group"><label>Организация</label>
+                <select id="s-org"><option value="">— Выберите организацию —</option></select>
+            </div>
+            <div class="form-group"><label>Место прохождения практики (отдел)</label><input type="text" id="s-department" placeholder="Отдел кадров"></div>
+            <div class="form-group"><label>Дата прибытия (туда)</label><input type="date" id="s-depart-date"></div>
+            <div class="form-group"><label>Время прибытия</label><input type="time" id="s-depart-time"></div>
+            <div class="form-group"><label>Дата убытия (обратно)</label><input type="date" id="s-return-date"></div>
+            <div class="form-group"><label>Время убытия</label><input type="time" id="s-return-time"></div>
+            <div class="modal-referral-box" id="modal-referral-box">
+                <div class="modal-referral-title" id="modal-ref-title">📄 Направление на практику (Word .docx)</div>
+                <div class="modal-referral-row">
+                    <select id="s-ref-lang" style="flex:1; padding:10px 12px; font-size:13px;">
+                        <option value="ru">На русском языке (RU)</option>
+                        <option value="kk">Қазақ тілінде (KK)</option>
+                        <option value="both">Оба языка (RU + KK)</option>
+                    </select>
+                    <button type="button" class="btn btn-primary" id="btn-download-modal-ref" style="width:auto; margin-top:0; padding:10px 14px; font-size:13px;">⬇ Скачать Word</button>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="save-student">Сохранить</button>
+            <button class="btn btn-secondary" data-close="student-modal">Отмена</button>
+        </div>
+    </div>
+
+    <!-- ORGANIZATION MODAL -->
+    <div class="modal" id="org-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="org-modal-title">Добавить организацию</h2>
+                <button class="close-btn" data-close="org-modal">&times;</button>
+            </div>
+            <div class="form-group"><label>Форма собственности / Тип</label>
+                <select id="o-type">
+                    <option value="ТОО">ТОО</option>
+                    <option value="ИП">ИП</option>
+                    <option value="АО">АО</option>
+                    <option value="Государственное учреждение">Государственное учреждение</option>
+                    <option value="Государственный орган">Государственный орган</option>
+                    <option value="КГУ">Коммунальное государственное учреждение (КГУ)</option>
+                    <option value="НКО">Некоммерческая организация</option>
+                    <option value="Другая">Другая организация</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Полное название</label><input type="text" id="o-name" placeholder="ТОО «Актобе Сервис»"></div>
+            <div class="form-group"><label>БИН / ИИН</label><input type="text" id="o-bin" placeholder="123456789012"></div>
+            <div class="form-group"><label>Руководитель организации</label><input type="text" id="o-head" placeholder="Иванов Иван"></div>
+            <div class="form-group"><label>Должность руководителя</label><input type="text" id="o-headpos" placeholder="Директор"></div>
+            <div class="form-group"><label>Адрес организации</label><input type="text" id="o-address" placeholder="г. Актобе"></div>
+            <div class="form-group"><label>Контактный телефон</label><input type="text" id="o-phone" placeholder="+7 700 000 0000"></div>
+            <button class="btn btn-primary" id="save-org">Сохранить организацию</button>
+            <button class="btn btn-secondary" data-close="org-modal">Отмена</button>
+        </div>
+    </div>
+
+    </div> <!-- end #app -->
+
+    <script>
+        const SPECIALIZATIONS = [
+            { id: 'accountant', ru: 'Бухгалтер', kk: 'Бухгалтер', code: '3W04110101 · 4S04110102' },
+            { id: 'procurement', ru: 'Менеджер по государственным закупкам', kk: 'Мемлекеттік сатып алу менеджері', code: '4S04110103' },
+            { id: 'appraiser', ru: 'Техник-оценщик', kk: 'Бағалаушы техник', code: '4S04120202' },
+            { id: 'lawyer', ru: 'Юрист', kk: 'Заңгер', code: '4S04210101' },
+            { id: 'developer', ru: 'Разработчик программного обеспечения', kk: 'Бағдарламалық жасақтама әзірлеушісі', code: '4S06130103' },
+            { id: 'tester', ru: 'Техник по сопровождению и тестированию ПО', kk: 'БҚ сүйемелдеу және тестілеу технигі', code: '4S06130104' },
+            { id: 'sysadmin', ru: 'Техник сетевого и системного администрирования', kk: 'Желілік және жүйелік әкімшілік технигі', code: '4S06120102' },
+            { id: 'security', ru: 'Техник по информационной безопасности', kk: 'Ақпараттық қауіпсіздік технигі', code: '4S06120202' }
+        ];
+
+        const ORG_TYPES = ['ТОО','ИП','АО','Государственное учреждение','Государственный орган','КГУ','НКО','Другая'];
+
+        let currentLang = 'ru';
+        let currentTab = 'students';
+        let students = [];
+        let organizations = [];
+        let savedReferrals = [];
+        let coursePlanDates = {
+            '1': '2025-08-30',
+            '2': '2024-08-30',
+            '3': '2023-08-30',
+            '4': '2022-08-30'
+        };
+        let openGroupCells = {};
+        let editingStudentId = null;
+        let editingOrgId = null;
+
+        const SAMPLE_ORGS = [
+            { id: 1, type: 'ТОО', name: 'ТОО «Актив Ломбард»', bin: '150140012345', head: 'Ахметов С.К.', headPosition: 'Директор', address: 'г. Актобе, ул. Абая 15', phone: '+7 701 123 4567', lat: 50.283, lon: 57.167 },
+            { id: 2, type: 'ТОО', name: 'ТОО «Ахтан Оценка»', bin: '180340056789', head: 'Ахтанов Б.М.', headPosition: 'Директор', address: 'г. Актобе, пр. Абилкайыр хана 72', phone: '+7 712 300 1122', lat: 50.291, lon: 57.152 },
+            { id: 3, type: 'ТОО', name: 'Qmobil', bin: '200150098765', head: 'Сериков А.Б.', headPosition: 'Директор', address: 'г. Актобе, ул. Молдагуловой 28', phone: '+7 777 555 1212', lat: 50.278, lon: 57.175 },
+            { id: 4, type: 'ТОО', name: 'Компания Фин-Юр', bin: '160220011223', head: 'Иванова М.С.', headPosition: 'Директор', address: 'г. Актобе, ул. Маресьева 105', phone: '+7 701 777 8899', lat: 50.285, lon: 57.160 },
+            { id: 5, type: 'Государственный орган', name: 'Департамент полиции Актюбинской области', bin: '', head: 'Начальник ДП', headPosition: 'Начальник', address: 'г. Актобе, ул. Есет батыра 12', phone: '+7 712 210 0101', lat: 50.287, lon: 57.170 },
+            { id: 6, type: 'АО', name: 'АО «Казахтелеком»', bin: '987654321098', head: 'Нурланов Б.К.', headPosition: 'Региональный директор', address: 'г. Актобе, пр. Абилкайыр хана 45', phone: '+7 712 255 6677', lat: 50.290, lon: 57.155 },
+            { id: 7, type: 'ТОО', name: 'ТОО «Digital Solutions»', bin: '123456789012', head: 'Сериков А.Б.', headPosition: 'Директор', address: 'г. Актобе, ул. Молдагуловой 12', phone: '+7 701 111 2233', lat: 50.276, lon: 57.172 },
+            { id: 8, type: 'ТОО', name: 'ТОО Глобал Мастер Групп', address: 'г. Актобе' },
+            { id: 9, type: 'ТОО', name: 'ТОО "TRUCK CENTER"', address: 'г. Актобе' },
+            { id: 10, type: 'ТОО', name: 'ТОО "Computer and educational service"', address: 'г. Актобе' },
+            { id: 11, type: 'АО', name: 'АО Jusan Mobile', address: 'г. Актобе' },
+            { id: 12, type: 'НКО', name: 'НАО Западно-Казахстанский медицинский университет им. М.Оспанова', address: 'г. Актобе' },
+            { id: 13, type: 'ТОО', name: 'ТОО "IT Space"', address: 'г. Актобе' },
+            { id: 14, type: 'ТОО', name: 'ТОО «BET global»', address: 'г. Актобе' },
+            { id: 15, type: 'ТОО', name: 'ТОО "ГОЛД-ПРОЕКТ"', address: 'г. Актобе' },
+            { id: 16, type: 'ТОО', name: 'ТОО Учебный центр', address: 'г. Актобе' },
+            { id: 17, type: 'Государственный орган', name: 'Актюбинский областной суд', bin: '', head: 'Председатель', headPosition: 'Председатель', address: 'г. Актобе, ул. Сатпаева, 2Б', phone: '+7 (7132) 70-48-74', lat: 50.2948, lon: 57.1553, gisId: '70000001031889701' }
+        ];
+
+        const SAMPLE_STUDENTS = [
+            { id: 1, surname: 'Ахметов', name: 'Алихан', course: '2', group: '0-201', spec: 'developer', orgId: 1, department: 'Отдел разработки', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 2, surname: 'Нұрғалиева', name: 'Айгерім', course: '3', group: '0-301', spec: 'security', orgId: 2, department: 'Отдел информационной безопасности', departDate: '2026-06-10', departTime: '08:30', returnDate: '2026-07-05', returnTime: '17:30' },
+            { id: 3, surname: 'Иванов', name: 'Дмитрий', course: '2', group: '0-202', spec: 'accountant', orgId: 3, department: 'Бухгалтерия', departDate: '2026-06-12', departTime: '09:30', returnDate: '2026-07-08', returnTime: '18:00' },
+            { id: 4, surname: 'Нагнойная', name: 'Вероника', course: '2', group: '0-204', spec: 'developer', orgId: 1, department: 'Отдел разработки', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 5, surname: 'Дебелова', name: 'Вероника', course: '2', group: '0-204', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 6, surname: 'Мамедова', name: 'Карина', course: '2', group: '0-204', spec: 'developer', orgId: 1, department: 'Отдел разработки', departDate: '2026-06-16', departTime: '09:30', returnDate: '2026-07-11', returnTime: '18:00' },
+            { id: 7, surname: 'Демиденко', name: 'Роман', course: '2', group: '0-204', spec: 'sysadmin', orgId: 2, department: 'IT-отдел', departDate: '2026-06-16', departTime: '08:30', returnDate: '2026-07-11', returnTime: '17:30' },
+            { id: 8, surname: 'Третья', name: 'Максим', course: '2', group: '0-204', spec: 'developer', orgId: 1, department: 'Отдел разработки', departDate: '2026-06-17', departTime: '10:00', returnDate: '2026-07-12', returnTime: '18:30' },
+            { id: 9, surname: 'Кузуб', name: 'Анна', course: '2', group: '0-204', spec: 'accountant', orgId: 3, department: 'Бухгалтерия', departDate: '2026-06-17', departTime: '09:00', returnDate: '2026-07-12', returnTime: '18:00' },
+            // Группа T118 Тестировщики
+            { id: 10, surname: 'Филиппова', name: 'Анастасия', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 11, surname: 'Ходан', name: 'Таисия', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 12, surname: 'Абдираманов', name: 'Алихан', patronymic: 'Адилович', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 13, surname: 'Бергело', name: 'Виталий', patronymic: 'Евгеньевич', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 14, surname: 'Булатов', name: 'Алан', patronymic: 'Максатович', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 15, surname: 'Викторов', name: 'Айболат', patronymic: 'Русланұлы', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 16, surname: 'Ефименко', name: 'Дмитрий', patronymic: 'Сергеевич', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 17, surname: 'Жусипбеков', name: 'Арман', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 18, surname: 'Казмуханбетов', name: 'Азат', patronymic: 'Зайдуллаевич', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 19, surname: 'Киикбаева', name: 'Аяна', patronymic: 'Бакытбеккызы', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 20, surname: 'Кужирова', name: 'Жанель', patronymic: 'Бакчановна', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 21, surname: 'Кулбеков', name: 'Олжас', patronymic: 'Алмазович', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 22, surname: 'Лазарев', name: 'Ратмир', patronymic: 'Александрович', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 23, surname: 'Малик', name: 'Мирас', patronymic: 'Маратұлы', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 24, surname: 'Радышев', name: 'Александр', patronymic: 'Игоревич', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 25, surname: 'Райжанов', name: 'Санжар', patronymic: 'Кайратович', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 26, surname: 'Райхерт', name: 'Юлия', patronymic: 'Андреевна', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 27, surname: 'Розман', name: 'Дарья', patronymic: 'Анатольевна', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 28, surname: 'Тажбағамбетов', name: 'Асылбек', patronymic: 'Абайұлы', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 29, surname: 'Тоқбас', name: 'Алишер', patronymic: 'Хамзеұлы', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 30, surname: 'Туктабаева', name: 'Амина', patronymic: 'Сериковна', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 31, surname: 'Шамсутдинова', name: 'Карина', patronymic: 'Шаукатовна', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 32, surname: 'Яненко', name: 'Матвей', patronymic: 'Александрович', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 33, surname: 'Ященко', name: 'Екатерина', patronymic: 'Алексеевна', course: '2', group: 'T118', spec: 'tester', orgId: 1, department: 'Отдел тестирования', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            // Группа П207
+            { id: 101, surname: 'Адайбеков', name: 'Тамирлан', patronymic: 'Азизович', course: '2', group: 'P207', spec: 'developer', orgId: 8, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 102, surname: 'Аймаганбетов', name: 'Арафат', course: '2', group: 'P207', spec: 'security', orgId: 5, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 103, surname: 'Айткалиев', name: 'Миржан', patronymic: 'Айчанович', course: '2', group: 'P207', spec: 'sysadmin', orgId: 9, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 104, surname: 'Аманжолов', name: 'Дияр', patronymic: 'Абатович', course: '2', group: 'P207', spec: 'sysadmin', orgId: 9, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 105, surname: 'Анашбаев', name: 'Максат', patronymic: 'Елтаевич', course: '2', group: 'P207', spec: 'developer', orgId: 10, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 106, surname: 'Ахмет', name: 'Дамира', patronymic: 'Сатжанкызы', course: '2', group: 'P207', spec: 'security', orgId: 5, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 107, surname: 'Башкиров', name: 'Борис', patronymic: 'Алексеевич', course: '2', group: 'P207', spec: 'developer', orgId: 10, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 108, surname: 'Бикмагамбетова', name: 'Даяна', patronymic: 'Буранкалиевна', course: '2', group: 'P207', spec: 'developer', orgId: 10, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 109, surname: 'Гончаров', name: 'Артём', patronymic: 'Сергеевич', course: '2', group: 'P207', spec: 'sysadmin', orgId: 6, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 110, surname: 'Даулетов', name: 'Бекнур', patronymic: 'Ержанович', course: '2', group: 'P207', spec: 'developer', orgId: 11, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 111, surname: 'Емельяцева', name: 'Ангелина', patronymic: 'Дмитриевна', course: '2', group: 'P207', spec: 'sysadmin', orgId: 6, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 112, surname: 'Ергалиев', name: 'Дамир', patronymic: 'Ергалиевич', course: '2', group: 'P207', spec: 'security', orgId: 5, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 113, surname: 'Ильичёв', name: 'Алексей', patronymic: 'Денисович', course: '2', group: 'P207', spec: 'sysadmin', orgId: 6, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 114, surname: 'Капилин', name: 'Данияр', patronymic: 'Марленұлы', course: '2', group: 'P207', spec: 'sysadmin', orgId: 9, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 115, surname: 'Карпенко', name: 'Назар', patronymic: 'Михайлович', course: '2', group: 'P207', spec: 'developer', orgId: 11, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 116, surname: 'Касымгалиев', name: 'Рамазан', patronymic: 'Берикович', course: '2', group: 'P207', spec: 'developer', orgId: 12, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 117, surname: 'Килибаев', name: 'Эльдар', patronymic: 'Тимурович', course: '2', group: 'P207', spec: 'developer', orgId: 13, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 118, surname: 'Койшибаева', name: 'Дамиля', patronymic: 'Сериковна', course: '2', group: 'P207', spec: 'sysadmin', orgId: 6, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 119, surname: 'Константинов', name: 'Александр', patronymic: 'Алексеевич', course: '2', group: 'P207', spec: 'sysadmin', orgId: 9, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 120, surname: 'Кунанбаев', name: 'Данияр', patronymic: 'Ринатович', course: '2', group: 'P207', spec: 'security', orgId: 5, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 121, surname: 'Матвиенко', name: 'Денис', patronymic: 'Юрьевич', course: '2', group: 'P207', spec: 'sysadmin', orgId: 6, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 122, surname: 'Миндыбаев', name: 'Дамир', patronymic: 'Максимович', course: '2', group: 'P207', spec: 'developer', orgId: 14, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 123, surname: 'Мирасулы', name: 'Али', course: '2', group: 'P207', spec: 'developer', orgId: 15, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 124, surname: 'Моисеенко', name: 'Данил', patronymic: 'Денисович', course: '2', group: 'P207', spec: 'developer', orgId: 10, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 125, surname: 'Нагизбеков', name: 'Расул', patronymic: 'Рустамович', course: '2', group: 'P207', spec: 'developer', orgId: 16, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 126, surname: 'Туреахмет', name: 'Шадияр', patronymic: 'Жанибекулы', course: '2', group: 'P207', spec: 'security', orgId: 5, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' },
+            { id: 127, surname: 'Тян', name: 'Артур', patronymic: 'Дмитриевич', course: '2', group: 'P207', spec: 'developer', orgId: 13, department: '', departDate: '2026-06-15', departTime: '09:00', returnDate: '2026-07-10', returnTime: '18:00' }
+        ];
+
+        function loadData() {
+            try {
+                const s = localStorage.getItem('ekeb_students_v6');
+                const o = localStorage.getItem('ekeb_orgs_v6');
+                const r = localStorage.getItem('ekeb_referrals_v6');
+                const p = localStorage.getItem('ekeb_plan_dates_v6');
+                students = s ? JSON.parse(s) : SAMPLE_STUDENTS;
+                organizations = o ? JSON.parse(o) : SAMPLE_ORGS;
+                savedReferrals = r ? JSON.parse(r) : [];
+                if (p) coursePlanDates = { ...coursePlanDates, ...JSON.parse(p) };
+                // Ensure court is always present
+                if (!organizations.some(org => org.id === 17 || (org.name && org.name.includes('областной суд')))) {
+                    organizations.push({
+                        id: 17,
+                        type: 'Государственный орган',
+                        name: 'Актюбинский областной суд',
+                        bin: '',
+                        head: 'Председатель',
+                        headPosition: 'Председатель',
+                        address: 'г. Актобе, ул. Сатпаева, 2Б',
+                        phone: '+7 (7132) 70-48-74',
+                        lat: 50.2948,
+                        lon: 57.1553,
+                        gisId: '70000001031889701'
+                    });
+                    saveData();
+                }
+                if (!s || !o) saveData();
+            } catch (e) {
+                // localStorage blocked (sandbox)
+                students = SAMPLE_STUDENTS;
+                organizations = SAMPLE_ORGS;
+            }
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem('ekeb_students_v6', JSON.stringify(students));
+                localStorage.setItem('ekeb_orgs_v6', JSON.stringify(organizations));
+                localStorage.setItem('ekeb_referrals_v6', JSON.stringify(savedReferrals));
+                localStorage.setItem('ekeb_plan_dates_v6', JSON.stringify(coursePlanDates));
+            } catch (e) {
+                // ignore if storage is blocked
+            }
+        }
+
+        function getPlanDateForCourse(course) {
+            return coursePlanDates[String(course || '2')] || coursePlanDates['2'] || '2025-08-30';
+        }
+
+        function syncPlanInputsUI() {
+            ['1', '2', '3', '4'].forEach(c => {
+                const el = document.getElementById('plan-date-' + c);
+                if (el) el.value = coursePlanDates[c] || '';
+            });
+        }
+
+        function savePlanDatesFromUI() {
+            ['1', '2', '3', '4'].forEach(c => {
+                const el = document.getElementById('plan-date-' + c);
+                if (el && el.value) coursePlanDates[c] = el.value;
+            });
+            saveData();
+            renderReferralsByGroup();
+            alert(currentLang === 'ru' ? 'Даты согласования рабочего плана по курсам сохранены!' : 'Курстар бойынша жұмыс жоспарын келісу күндері сақталды!');
+        }
+
+        function recordReferralInGroupCell(student, langMode) {
+            const org = getOrg(student.orgId);
+            const groupKey = (student.group || '').trim() || (currentLang === 'ru' ? 'Без группы' : 'Топсыз');
+            const planDate = student.planDate || getPlanDateForCourse(student.course);
+            const entry = {
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                studentId: student.id || null,
+                group: groupKey,
+                course: student.course || '2',
+                surname: student.surname || '',
+                name: student.name || '',
+                patronymic: student.patronymic || '',
+                spec: student.spec || '',
+                orgId: student.orgId || null,
+                orgName: org ? org.name : '—',
+                department: student.department || '',
+                departDate: student.departDate || '',
+                departTime: student.departTime || '',
+                returnDate: student.returnDate || '',
+                returnTime: student.returnTime || '',
+                planDate: planDate,
+                langMode: langMode,
+                createdAt: new Date().toISOString()
+            };
+            // Replace previous saved referral for the same student + langMode in the same group cell, or add new
+            const existingIdx = savedReferrals.findIndex(r =>
+                r.group === groupKey &&
+                r.langMode === langMode &&
+                ((student.id && r.studentId === student.id) ||
+                 (normalizeName(r.surname) === normalizeName(student.surname) && normalizeName(r.name) === normalizeName(student.name)))
+            );
+            if (existingIdx > -1) {
+                savedReferrals[existingIdx] = { ...savedReferrals[existingIdx], ...entry };
+            } else {
+                savedReferrals.unshift(entry);
+            }
+            openGroupCells[groupKey] = true;
+            saveData();
+            populateSelects();
+            if (currentTab === 'referrals') renderReferralsByGroup();
+        }
+
+        function normalizeName(name) {
+            return (name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+        }
+
+        function findOrgByName(name) {
+            const n = normalizeName(name);
+            return organizations.find(o => normalizeName(o.name) === n);
+        }
+
+        function getOrg(id) {
+            return organizations.find(o => o.id == id);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '—';
+            const [y, m, d] = dateStr.split('-');
+            if (!y || !m || !d) return dateStr;
+            return `${d}.${m}.${y}`;
+        }
+
+        function formatTime(timeStr) {
+            return timeStr || '';
+        }
+
+        function updateLangUI() {
+            document.getElementById('app-title').textContent = currentLang === 'ru' ? 'Практика студентов' : 'Студенттер тәжірибесі';
+            document.getElementById('app-subtitle').textContent = currentLang === 'ru' ? 'Студенты и организации' : 'Студенттер мен ұйымдар';
+            document.getElementById('tab-students').textContent = currentLang === 'ru' ? 'Студенты' : 'Студенттер';
+            document.getElementById('tab-referrals').textContent = currentLang === 'ru' ? 'Направления' : 'Жолдамалар';
+            document.getElementById('tab-orgs').textContent = currentLang === 'ru' ? 'Организации' : 'Ұйымдар';
+            document.getElementById('tab-map').textContent = currentLang === 'ru' ? 'Карта 2GIS' : '2GIS картасы';
+            document.getElementById('lbl-total').textContent = currentLang === 'ru' ? 'Всего' : 'Барлығы';
+            document.getElementById('lbl-shown').textContent = currentLang === 'ru' ? 'Показано' : 'Көрсетілген';
+            document.getElementById('lbl-groups').textContent = currentLang === 'ru' ? 'Групп' : 'Топтар';
+            document.getElementById('search').placeholder = currentLang === 'ru' ? 'Поиск по ФИО...' : 'Аты-жөні бойынша іздеу...';
+            
+            document.getElementById('org-search').placeholder = currentLang === 'ru' ? 'Поиск организации...' : 'Ұйымды іздеу...';
+            document.getElementById('ref-search').placeholder = currentLang === 'ru' ? 'Поиск по ФИО или организации...' : 'Аты-жөні немесе ұйым бойынша іздеу...';
+            document.getElementById('plan-box-title').textContent = currentLang === 'ru' ? '📅 Согласование рабочего учебного плана по курсам (дата в направлении)' : '📅 Курстар бойынша жұмыс оқу жоспарын келісу (жолдамадағы күн)';
+            document.getElementById('plan-box-desc').textContent = currentLang === 'ru' ? 'Дата согласования рабочего плана подставляется в документ направления в зависимости от курса (года поступления) студента.' : 'Жұмыс жоспарын келісу күні студенттің курсына (оқуға түскен жылына) байланысты жолдама құжатына қойылады.';
+            document.getElementById('btn-save-plans').textContent = currentLang === 'ru' ? 'Сохранить даты' : 'Күндерді сақтау';
+            document.getElementById('lbl-plan-1').textContent = currentLang === 'ru' ? '1 курс (поступление 2025 г.)' : '1 курс (2025 ж. түскен)';
+            document.getElementById('lbl-plan-2').textContent = currentLang === 'ru' ? '2 курс (поступление 2024 г.)' : '2 курс (2024 ж. түскен)';
+            document.getElementById('lbl-plan-3').textContent = currentLang === 'ru' ? '3 курс (поступление 2023 г.)' : '3 курс (2023 ж. түскен)';
+            document.getElementById('lbl-plan-4').textContent = currentLang === 'ru' ? '4 курс (поступление 2022 г.)' : '4 курс (2022 ж. түскен)';
+            syncPlanInputsUI();
+            populateSelects();
+            renderCurrent();
+        }
+
+        function populateSelects() {
+            // Specs
+            const specSel = document.getElementById('filter-spec');
+            const sSpec = document.getElementById('s-spec');
+            specSel.innerHTML = `<option value="all">${currentLang === 'ru' ? 'Все направления' : 'Барлық бағыттар'}</option>`;
+            sSpec.innerHTML = '';
+            SPECIALIZATIONS.forEach(s => {
+                const name = s[currentLang];
+                const label = `${name} (${s.code})`;
+                specSel.innerHTML += `<option value="${s.id}">${label}</option>`;
+                sSpec.innerHTML += `<option value="${s.id}">${label}</option>`;
+            });
+
+            // Orgs filter + student select
+            const orgFilter = document.getElementById('filter-org');
+            const sOrg = document.getElementById('s-org');
+            orgFilter.innerHTML = `<option value="all">${currentLang === 'ru' ? 'Все организации' : 'Барлық ұйымдар'}</option>`;
+            sOrg.innerHTML = `<option value="">— ${currentLang === 'ru' ? 'Выберите организацию' : 'Ұйымды таңдаңыз'} —</option>`;
+            organizations.forEach(o => {
+                orgFilter.innerHTML += `<option value="${o.id}">${o.name}</option>`;
+                sOrg.innerHTML += `<option value="${o.id}">${o.type} — ${o.name}</option>`;
+            });
+
+            // Groups dropdown
+            const groupFilter = document.getElementById('filter-group');
+            const allGroupNames = [...new Set([
+                ...students.map(s => (s.group || '').trim()),
+                ...savedReferrals.map(r => (r.group || '').trim())
+            ].filter(Boolean))].sort();
+
+            if (groupFilter) {
+                const prevGroup = groupFilter.value || 'all';
+                groupFilter.innerHTML = `<option value="all">${currentLang === 'ru' ? 'Все группы' : 'Барлық топтар'}</option>`;
+                allGroupNames.forEach(g => {
+                    groupFilter.innerHTML += `<option value="${escapeXml(g)}">${escapeXml(g)}</option>`;
+                });
+                if (allGroupNames.includes(prevGroup)) groupFilter.value = prevGroup;
+            }
+
+            const refGroupFilter = document.getElementById('ref-filter-group');
+            if (refGroupFilter) {
+                const prevRefGroup = refGroupFilter.value || 'all';
+                refGroupFilter.innerHTML = `<option value="all">${currentLang === 'ru' ? 'Все ячейки групп' : 'Барлық топ ұяшықтары'}</option>`;
+                allGroupNames.forEach(g => {
+                    refGroupFilter.innerHTML += `<option value="${escapeXml(g)}">${escapeXml(g)}</option>`;
+                });
+                if (allGroupNames.includes(prevRefGroup)) refGroupFilter.value = prevRefGroup;
+            }
+        }
+
+        function getSpecName(id) {
+            const spec = SPECIALIZATIONS.find(s => s.id === id);
+            if (!spec) return id || '—';
+            return `${spec[currentLang]} (${spec.code})`;
+        }
+
+        function renderCurrent() {
+            if (currentTab === 'students') renderStudents();
+            else if (currentTab === 'referrals') renderReferralsByGroup();
+            else if (currentTab === 'orgs') renderOrgs();
+            else if (currentTab === 'map') renderMap();
+        }
+
+        function renderReferralsByGroup() {
+            const list = document.getElementById('referral-groups-list');
+            if (!list) return;
+            const filterGrp = document.getElementById('ref-filter-group').value;
+            const q = document.getElementById('ref-search').value.toLowerCase().trim();
+
+            // Collect all group names from both students and savedReferrals so every group has its own cell
+            const groupSet = new Set();
+            students.forEach(s => {
+                const g = (s.group || '').trim() || (currentLang === 'ru' ? 'Без группы' : 'Топсыз');
+                groupSet.add(g);
+            });
+            savedReferrals.forEach(r => {
+                const g = (r.group || '').trim() || (currentLang === 'ru' ? 'Без группы' : 'Топсыз');
+                groupSet.add(g);
+            });
+
+            let groupsArr = [...groupSet].sort();
+            if (filterGrp !== 'all') {
+                groupsArr = groupsArr.filter(g => g === filterGrp);
+            }
+
+            list.innerHTML = '';
+            if (groupsArr.length === 0) {
+                list.innerHTML = `<div class="empty">${currentLang === 'ru' ? 'Группы не найдены' : 'Топтар табылмады'}</div>`;
+                return;
+            }
+
+            groupsArr.forEach(groupName => {
+                const cellItems = savedReferrals.filter(r => {
+                    const g = (r.group || '').trim() || (currentLang === 'ru' ? 'Без группы' : 'Топсыз');
+                    if (g !== groupName) return false;
+                    if (!q) return true;
+                    const fio = `${r.surname} ${r.name} ${r.patronymic || ''} ${r.orgName || ''}`.toLowerCase();
+                    return fio.includes(q);
+                });
+
+                const groupStudents = students.filter(s => ((s.group || '').trim() || (currentLang === 'ru' ? 'Без группы' : 'Топсыз')) === groupName);
+                const sampleCourse = (cellItems[0] && cellItems[0].course) || (groupStudents[0] && groupStudents[0].course) || '2';
+                const planDateFormatted = formatDate(getPlanDateForCourse(sampleCourse));
+
+                // If search query is active, hide empty matching cells
+                if (q && cellItems.length === 0) return;
+
+                const isOpen = openGroupCells[groupName] !== undefined ? openGroupCells[groupName] : cellItems.length > 0;
+                const card = document.createElement('div');
+                card.className = 'group-folder-card';
+
+                const langLabels = { ru: 'РУС', kk: 'ҚАЗ', both: 'РУС + ҚАЗ' };
+
+                let bodyHtml = '';
+                if (isOpen) {
+                    if (cellItems.length === 0) {
+                        bodyHtml = `<div class="group-folder-body">
+                            <div style="font-size:12px;color:var(--text-dim);">
+                                ${currentLang === 'ru'
+                                    ? `В ячейке группы <b>${escapeXml(groupName)}</b> пока нет созданных направлений. Нажмите «Word (РУС)» или «Word (ҚАЗ)» у студента или сформируйте для всей группы.`
+                                    : `<b>${escapeXml(groupName)}</b> тобының ұяшығында әзірге жасалған жолдамалар жоқ.`}
+                            </div>
+                            ${groupStudents.length > 0 ? `<div><button type="button" class="ref-btn" onclick="generateAllForGroup('${escapeXml(groupName)}', 'ru')">📄 ${currentLang === 'ru' ? 'Сформировать для всех в группе' : 'Топтағы барлығына жасау'} (${groupStudents.length})</button></div>` : ''}
+                        </div>`;
+                    } else {
+                        const itemsHtml = cellItems.map(item => {
+                            const fullFio = [item.surname, item.name, item.patronymic].filter(Boolean).join(' ');
+                            const createdDate = item.createdAt ? new Date(item.createdAt).toLocaleDateString('ru-RU') : '';
+                            return `
+                                <div class="saved-ref-item">
+                                    <div style="flex:1;min-width:180px;">
+                                        <div style="font-size:14px;font-weight:600;">${escapeXml(fullFio)} <span style="font-size:11px;color:var(--accent);">(${item.course} курс)</span></div>
+                                        <div style="font-size:12px;color:var(--text-dim);">📍 ${escapeXml(item.orgName)}${item.department ? ' • ' + escapeXml(item.department) : ''}</div>
+                                        <div style="font-size:11px;color:var(--accent2);margin-top:2px;">
+                                            ${currentLang === 'ru' ? 'План согласован:' : 'Жоспар келісілген:'} <b>${formatDate(item.planDate || getPlanDateForCourse(item.course))}</b> ·
+                                            ${currentLang === 'ru' ? 'Язык:' : 'Тілі:'} <b>${langLabels[item.langMode] || item.langMode}</b>${createdDate ? ' · ' + createdDate : ''}
+                                        </div>
+                                    </div>
+                                    <div style="display:flex;gap:6px;align-items:center;">
+                                        <button type="button" class="ref-btn" onclick="redownloadSavedReferral(${item.id})">⬇ Word</button>
+                                        <button type="button" class="small-btn" style="color:var(--danger);border-color:rgba(255,82,82,0.35);" onclick="deleteSavedReferral(${item.id})">✕</button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+
+                        bodyHtml = `<div class="group-folder-body">${itemsHtml}</div>`;
+                    }
+                }
+
+                card.innerHTML = `
+                    <div class="group-folder-header" onclick="toggleGroupCell('${escapeXml(groupName)}')">
+                        <div class="group-folder-title">
+                            <span>${isOpen ? '📂' : '📁'}</span>
+                            <span>${currentLang === 'ru' ? 'Группа' : 'Топ'}: ${escapeXml(groupName)}</span>
+                            <span style="font-size:11px;font-weight:500;color:var(--text-dim);">(${sampleCourse} курс · план ${planDateFormatted})</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span class="group-folder-badge">${cellItems.length} ${currentLang === 'ru' ? 'напр.' : 'жолд.'}</span>
+                            <span style="color:var(--text-dim);font-size:12px;">${isOpen ? '▲' : '▼'}</span>
+                        </div>
+                    </div>
+                    ${bodyHtml}
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        function toggleGroupCell(groupName) {
+            openGroupCells[groupName] = !openGroupCells[groupName];
+            renderReferralsByGroup();
+        }
+
+        function redownloadSavedReferral(refId) {
+            const item = savedReferrals.find(r => r.id === refId);
+            if (!item) return;
+            const st = item.studentId ? (students.find(s => s.id === item.studentId) || item) : item;
+            generateStudentReferralDocx({ ...item, ...st, planDate: item.planDate }, item.langMode, false);
+        }
+
+        function deleteSavedReferral(refId) {
+            savedReferrals = savedReferrals.filter(r => r.id !== refId);
+            saveData();
+            renderReferralsByGroup();
+        }
+
+        function generateAllForGroup(groupName, langMode) {
+            const grpStudents = students.filter(s => ((s.group || '').trim() || (currentLang === 'ru' ? 'Без группы' : 'Топсыз')) === groupName);
+            grpStudents.forEach(s => {
+                recordReferralInGroupCell(s, langMode);
+            });
+            renderReferralsByGroup();
+        }
+
+        function renderStudents() {
+            const course = document.getElementById('filter-course').value;
+            const spec = document.getElementById('filter-spec').value;
+            const org = document.getElementById('filter-org').value;
+            const group = document.getElementById('filter-group').value;
+            const search = document.getElementById('search').value.toLowerCase().trim();
+
+            let filtered = students.filter(s => {
+                if (course !== 'all' && s.course !== course) return false;
+                if (spec !== 'all' && s.spec !== spec) return false;
+                if (org !== 'all' && Number(s.orgId) !== Number(org)) return false;
+                if (group !== 'all' && (s.group || '').trim() !== group) return false;
+                if (search) {
+                    const full = ((s.surname || '') + ' ' + (s.name || '') + ' ' + (s.patronymic || '')).toLowerCase();
+                    if (!full.includes(search)) return false;
+                }
+                return true;
+            });
+
+            const groups = {};
+            filtered.forEach(s => {
+                const key = s.spec || 'none';
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(s);
+            });
+
+            const list = document.getElementById('student-list');
+            list.innerHTML = '';
+            document.getElementById('stat-total').textContent = students.length;
+            document.getElementById('stat-filtered').textContent = filtered.length;
+            document.getElementById('stat-groups').textContent = Object.keys(groups).length;
+
+            if (filtered.length === 0) {
+                list.innerHTML = `<div class="empty">${currentLang === 'ru' ? 'Нет студентов по фильтрам' : 'Сүзгі бойынша студенттер жоқ'}</div>`;
+                return;
+            }
+
+            Object.keys(groups).sort().forEach(specId => {
+                const arr = groups[specId];
+                const h = document.createElement('div');
+                h.className = 'group-header';
+                h.textContent = getSpecName(specId) + ` (${arr.length})`;
+                list.appendChild(h);
+
+                arr.forEach(s => {
+                    const org = getOrg(s.orgId);
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <div class="student-name">${s.surname} ${s.name}${s.patronymic ? ' ' + s.patronymic : ''}</div>
+                            <div class="course-badge">${s.group || s.course + ' курс'}</div>
+                        </div>
+                        <div class="specialization">${getSpecName(s.spec)}</div>
+                        <div class="practice-place">📍 ${org ? org.name : '—'} ${s.department ? '• ' + s.department : ''}</div>
+                        <div class="dates">
+                            <div class="date-item">
+                                <div class="date-label">${currentLang === 'ru' ? 'Прибытие' : 'Келу'}</div>
+                                <div>${formatDate(s.departDate)} ${formatTime(s.departTime)}</div>
+                            </div>
+                            <div class="date-item">
+                                <div class="date-label">${currentLang === 'ru' ? 'Убытие' : 'Кету'}</div>
+                                <div>${formatDate(s.returnDate)} ${formatTime(s.returnTime)}</div>
+                            </div>
+                        </div>
+                        <div class="referral-bar" onclick="event.stopPropagation()">
+                            <span style="font-size:11px; color:var(--text-dim); margin-right:auto;">📄 ${currentLang === 'ru' ? 'Направление:' : 'Жолдама:'}</span>
+                            <button type="button" class="ref-btn" onclick="downloadReferralById(${s.id}, 'ru')">Word (РУС)</button>
+                            <button type="button" class="ref-btn kk" onclick="downloadReferralById(${s.id}, 'kk')">Word (ҚАЗ)</button>
+                        </div>
+                    `;
+                    card.onclick = () => editStudent(s.id);
+                    list.appendChild(card);
+                });
+            });
+        }
+
+        function renderOrgs() {
+            const q = document.getElementById('org-search').value.toLowerCase().trim();
+            let filtered = organizations.filter(o => !q || o.name.toLowerCase().includes(q) || (o.bin && o.bin.includes(q)));
+
+            const list = document.getElementById('org-list');
+            list.innerHTML = '';
+
+            if (filtered.length === 0) {
+                list.innerHTML = `<div class="empty">${currentLang === 'ru' ? 'Организации не найдены' : 'Ұйымдар табылмады'}</div>`;
+                return;
+            }
+
+            filtered.forEach(o => {
+                const count = students.filter(s => s.orgId == o.id).length;
+                const card = document.createElement('div');
+                card.className = 'card org-card';
+                card.innerHTML = `
+                    <div class="org-type">${o.type}</div>
+                    <div class="student-name" style="margin:6px 0;">${o.name}</div>
+                    <div style="font-size:12px; color:var(--text-dim);">
+                        БИН: ${o.bin || '—'}<br>
+                        Руководитель: ${o.head || '—'} (${o.headPosition || '—'})<br>
+                        Адрес: ${o.address || '—'}<br>
+                        Тел: ${o.phone || '—'}
+                    </div>
+                    <div style="margin-top:8px; font-weight:600; color:var(--accent);">${count} ${currentLang === 'ru' ? 'студент(ов)' : 'студент'}</div>
+                    <div class="org-actions">
+                        <button class="small-btn" onclick="showStudentsOfOrg(${o.id})">${currentLang === 'ru' ? 'Студенты' : 'Студенттер'}</button>
+                        <button class="small-btn" onclick="editOrg(${o.id})">${currentLang === 'ru' ? 'Редактировать' : 'Өңдеу'}</button>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        function showStudentsOfOrg(orgId) {
+            document.getElementById('filter-org').value = orgId;
+            switchTab('students');
+        }
+
+        function openStudentModal(edit = false) {
+            if (!edit) {
+                editingStudentId = null;
+                document.getElementById('s-surname').value = '';
+                document.getElementById('s-name').value = '';
+                document.getElementById('s-patronymic').value = '';
+                document.getElementById('s-course').value = '2';
+                document.getElementById('s-group').value = '';
+                document.getElementById('s-plan-date').value = getPlanDateForCourse('2');
+                document.getElementById('s-department').value = '';
+                document.getElementById('s-depart-date').value = '';
+                document.getElementById('s-depart-time').value = '';
+                document.getElementById('s-return-date').value = '';
+                document.getElementById('s-return-time').value = '';
+            }
+            document.getElementById('s-ref-lang').value = currentLang;
+            document.getElementById('student-modal').classList.add('show');
+            document.getElementById('student-modal-title').textContent = edit ? (currentLang === 'ru' ? 'Редактировать студента' : 'Студентті өңдеу') : (currentLang === 'ru' ? 'Добавить студента' : 'Студент қосу');
+        }
+
+        function openOrgModal(edit = false) {
+            document.getElementById('org-modal').classList.add('show');
+            document.getElementById('org-modal-title').textContent = edit ? (currentLang === 'ru' ? 'Редактировать организацию' : 'Ұйымды өңдеу') : (currentLang === 'ru' ? 'Добавить организацию' : 'Ұйым қосу');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('show');
+            if (id === 'student-modal') editingStudentId = null;
+            if (id === 'org-modal') editingOrgId = null;
+        }
+
+        function editStudent(id) {
+            const s = students.find(x => x.id === id);
+            if (!s) return;
+            editingStudentId = id;
+            document.getElementById('s-surname').value = s.surname || '';
+            document.getElementById('s-name').value = s.name || '';
+            document.getElementById('s-patronymic').value = s.patronymic || '';
+            document.getElementById('s-course').value = s.course || '2';
+            document.getElementById('s-group').value = s.group || '';
+            document.getElementById('s-plan-date').value = s.planDate || getPlanDateForCourse(s.course || '2');
+            document.getElementById('s-spec').value = s.spec || '';
+            document.getElementById('s-org').value = s.orgId || '';
+            document.getElementById('s-department').value = s.department || '';
+            document.getElementById('s-depart-date').value = s.departDate || '';
+            document.getElementById('s-depart-time').value = s.departTime || '';
+            document.getElementById('s-return-date').value = s.returnDate || '';
+            document.getElementById('s-return-time').value = s.returnTime || '';
+            openStudentModal(true);
+        }
+
+        function editOrg(id) {
+            const o = getOrg(id);
+            if (!o) return;
+            editingOrgId = id;
+            document.getElementById('o-type').value = o.type;
+            document.getElementById('o-name').value = o.name;
+            document.getElementById('o-bin').value = o.bin || '';
+            document.getElementById('o-head').value = o.head || '';
+            document.getElementById('o-headpos').value = o.headPosition || '';
+            document.getElementById('o-address').value = o.address || '';
+            document.getElementById('o-phone').value = o.phone || '';
+            openOrgModal(true);
+        }
+
+        function saveStudent() {
+            const courseVal = document.getElementById('s-course').value;
+            const data = {
+                surname: document.getElementById('s-surname').value.trim(),
+                name: document.getElementById('s-name').value.trim(),
+                patronymic: document.getElementById('s-patronymic').value.trim(),
+                course: courseVal,
+                group: document.getElementById('s-group').value.trim(),
+                planDate: document.getElementById('s-plan-date').value || getPlanDateForCourse(courseVal),
+                spec: document.getElementById('s-spec').value,
+                orgId: document.getElementById('s-org').value ? Number(document.getElementById('s-org').value) : null,
+                department: document.getElementById('s-department').value.trim(),
+                departDate: document.getElementById('s-depart-date').value,
+                departTime: document.getElementById('s-depart-time').value,
+                returnDate: document.getElementById('s-return-date').value,
+                returnTime: document.getElementById('s-return-time').value
+            };
+            if (!data.surname || !data.name) return alert(currentLang === 'ru' ? 'Укажите фамилию и имя' : 'Тегі мен атын енгізіңіз');
+
+            if (editingStudentId) {
+                const idx = students.findIndex(s => s.id === editingStudentId);
+                if (idx > -1) students[idx] = { ...students[idx], ...data };
+            } else {
+                data.id = Date.now();
+                students.push(data);
+            }
+            saveData();
+            populateSelects();
+            closeModal('student-modal');
+            renderCurrent();
+        }
+
+        function saveOrg() {
+            const name = document.getElementById('o-name').value.trim();
+            if (!name) return alert(currentLang === 'ru' ? 'Укажите название' : 'Атауын енгізіңіз');
+
+            const existing = findOrgByName(name);
+            if (existing && existing.id != editingOrgId) {
+                return alert(currentLang === 'ru' ? 'Организация с таким названием уже существует' : 'Мұндай атауы бар ұйым бар');
+            }
+
+            const data = {
+                type: document.getElementById('o-type').value,
+                name: name,
+                bin: document.getElementById('o-bin').value.trim(),
+                head: document.getElementById('o-head').value.trim(),
+                headPosition: document.getElementById('o-headpos').value.trim(),
+                address: document.getElementById('o-address').value.trim(),
+                phone: document.getElementById('o-phone').value.trim()
+            };
+
+            if (editingOrgId) {
+                const idx = organizations.findIndex(o => o.id == editingOrgId);
+                if (idx > -1) organizations[idx] = { ...organizations[idx], ...data };
+            } else {
+                data.id = Date.now();
+                organizations.push(data);
+            }
+            saveData();
+            populateSelects();
+            closeModal('org-modal');
+            renderCurrent();
+        }
+
+        function exportExcel() {
+            const rows = students.map(s => {
+                const o = getOrg(s.orgId) || {};
+                return {
+                    'Фамилия': s.surname,
+                    'Имя': s.name,
+                    'Отчество': s.patronymic || '',
+                    'Курс': s.course,
+                    'Группа': s.group || '',
+                    'Направление': getSpecName(s.spec),
+                    'Тип организации': o.type || '',
+                    'Организация': o.name || '',
+                    'БИН': o.bin || '',
+                    'Руководитель': o.head || '',
+                    'Должность': o.headPosition || '',
+                    'Адрес': o.address || '',
+                    'Телефон': o.phone || '',
+                    'Отдел / Место практики': s.department || '',
+                    'Дата прибытия': s.departDate || '',
+                    'Время прибытия': s.departTime || '',
+                    'Дата возвращения': s.returnDate || '',
+                    'Время возвращения': s.returnTime || ''
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Практика');
+            XLSX.writeFile(wb, 'EKEB_Практика_Студенты_и_Организации.xlsx');
+        }
+
+        let mapInstance = null;
+        let mapMarkers = [];
+        let courtMarker = null;
+
+        function get2gisUrl(org) {
+            if (org.gisId) return `https://2gis.kz/aktobe/firm/${org.gisId}`;
+            return `https://2gis.kz/aktobe/search/${encodeURIComponent((org.name || '') + ' Актобе')}`;
+        }
+
+        function renderMap() {
+            // Initialize map if not yet
+            if (!mapInstance) {
+                mapInstance = L.map('aktobe-map').setView([50.290, 57.160], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap · 2ГИС',
+                    maxZoom: 19
+                }).addTo(mapInstance);
+            }
+
+            // Clear old markers
+            mapMarkers.forEach(m => mapInstance.removeLayer(m));
+            mapMarkers = [];
+            courtMarker = null;
+
+            const container = document.getElementById('map-places');
+            container.innerHTML = '';
+
+            // Sort: court first, then by name
+            const sortedOrgs = [...organizations].sort((a, b) => {
+                if (a.id === 17) return -1;
+                if (b.id === 17) return 1;
+                return (a.name || '').localeCompare(b.name || '');
+            });
+
+            sortedOrgs.forEach(o => {
+                const studentsHere = students.filter(s => s.orgId == o.id);
+                const lat = o.lat || (50.283 + (Math.random() - 0.5) * 0.04);
+                const lon = o.lon || (57.167 + (Math.random() - 0.5) * 0.04);
+                const isCourt = o.id === 17 || (o.name && o.name.includes('областной суд'));
+
+                const icon = isCourt
+                    ? L.divIcon({
+                        className: 'court-marker',
+                        html: `<div style="background:#ffab00;color:#000;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">⚖</div>`,
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14]
+                      })
+                    : null;
+
+                const marker = icon
+                    ? L.marker([lat, lon], { icon }).addTo(mapInstance)
+                    : L.marker([lat, lon]).addTo(mapInstance);
+
+                if (isCourt) courtMarker = marker;
+
+                const gisLink = get2gisUrl(o);
+                marker.bindPopup(`
+                    <div style="min-width:180px;">
+                        <b style="font-size:14px;">${o.name}</b><br>
+                        <span style="color:#666;font-size:12px;">${o.address || 'г. Актобе'}</span><br>
+                        ${o.phone ? `<span style="font-size:12px;">☎ ${o.phone}</span><br>` : ''}
+                        <small style="color:#00b8d4;">${studentsHere.length} студент(ов)</small><br>
+                        <a href="${gisLink}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;padding:6px 10px;background:#00e5ff;color:#000;border-radius:8px;text-decoration:none;font-weight:600;font-size:12px;">Открыть в 2ГИС →</a>
+                    </div>
+                `);
+                mapMarkers.push(marker);
+
+                // List item
+                const div = document.createElement('div');
+                div.style.cssText = `padding:12px;border-bottom:1px solid var(--border);cursor:pointer;${isCourt ? 'background:rgba(255,171,0,0.08);border-left:3px solid var(--warning);' : ''}`;
+                div.innerHTML = `
+                    <div style="font-weight:600;">${isCourt ? '⚖ ' : ''}${o.name}</div>
+                    <div style="font-size:12px;color:var(--text-dim);margin:4px 0;">${o.address || 'г. Актобе'}</div>
+                    <div style="font-size:12px;color:var(--accent);">${studentsHere.length} студент(ов) на практике</div>
+                    <div style="margin-top:6px;">
+                        <a href="${gisLink}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:12px;color:var(--accent2);text-decoration:none;">Открыть в 2ГИС →</a>
+                    </div>
+                `;
+                div.onclick = () => {
+                    mapInstance.setView([lat, lon], 16);
+                    marker.openPopup();
+                };
+                container.appendChild(div);
+            });
+
+            // Fit bounds if markers exist
+            if (mapMarkers.length) {
+                const group = L.featureGroup(mapMarkers);
+                mapInstance.fitBounds(group.getBounds().pad(0.15));
+            }
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+            document.getElementById('view-students').style.display = tab === 'students' ? 'block' : 'none';
+            document.getElementById('view-referrals').style.display = tab === 'referrals' ? 'block' : 'none';
+            document.getElementById('view-orgs').style.display = tab === 'orgs' ? 'block' : 'none';
+            document.getElementById('view-map').style.display = tab === 'map' ? 'block' : 'none';
+            document.getElementById('add-btn').style.display = (tab === 'map' || tab === 'referrals') ? 'none' : 'block';
+            if (tab === 'map') {
+                renderMap();
+                setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 100);
+            } else renderCurrent();
+        }
+
+        
+        const COLLEGE_LOGO_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAANMAAACnCAYAAACLtGkOAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAh1QAAIdUBBJy0nQAAcBtJREFUeF7tXQd4HNXVXRXL3cZFfXvvRateLMtV7sbY9N5rgAAhCSQmCZCEkpDkTwiB0CHgBAgECAQSU42xpF01N9nGWJasbvWtszP/ubO78tqWbclYtgSr75tPbXf2zZt359537rnnCgTRr1E7AxwniOH2zJjurRFY2MrkJPweO2oHGx1YdAZG8wyw9cKJjGPcZd6KmP8yzik/4MrVs0fzeKNji87AqJ0BdptWHXDE/8NfJugPOMZ9zNaIC7iNxfGjdsDRgUVnYDTOAMetj2VqJRcyFQm72QpBgCmLb2FqRd/nyu2TRuN4o2OKzsConQFub3FKoHLSY0x5TBfnEHBMucAFL/UMW5UuHLWDjg4sOgOjbQY4bl2cf5toIeMc/zlTIfCTMQUqBAxTEbvFXz154YYN6+JG25ij44nOwKicAbYtPy1Qk/RLxhHXBCNiyZhY3jvFdvirZv/B9VWeZFQOPDqo6Aycrhlg3xdMhlGsCpQLHvVvEfwpsEXw+GCHvzzmb0xFXF3AEeMjQwofeC+8U9x+eKi/H/O9OCfO/Tt4tIu5vYKzTte1RT/nOzYDnEAQcyYvmfJGbE2CLuBM+KO/ImYHULqD2At5YFzeww6HwEegQ6QhDRgUPBW8lf+o9+A8/rKYXn9F7H5fZcLLbNXUXG6j4Iwif3S9Z3K+o589QjPAVQtmsM5xBrZy8hlNfvIG1ZA2y+cUFMAoHoJB7SKDgtcZ1HgGM6jDvFXQuLwwpAamctrrbE3KpexOVTp3BvdV9NBiawUz2apxJrZOkHimH2IjtKS+m6fFAh7HOgUlPkf8C97KSVeCTTD5TM8EsRkoDIMhnYvjNRx7YRTBsM55KLQ7njHBAP1MmaAR73uPc8Zey+3Riznu2nFn+tpgQOP9tVNX+p0JL3kqJq7hNkomnOkxRT//FM0Auy1tFlMRfztg5q1+58Qnub3J0lN06m98Gu4JGHrNONCFBHfCu5SxjhjXibxREN2L8WH/tBX7qvvZ6vg8llWO/8aDOUUnYLfNTkUE8BD2djv9jvG/6t88Uxj1Tqdocs/kacgDsFuTDYGK+GewKe8CQlbmdyQtIPj5TI4r8rO59Rhj3ZRExjHx1kBF7FdcxYk9ExZqa6Bq8i/ZrWdJcI2j51oQxvprJHMZx/jNeHi5GEf8v301aflnev82Wu71mB4HW2mezG6beTae4p8ilHIDKWv0OSfdMxpCvciJJR4eWzPlar8jdh/B4McN72BsuJ4mxjnjbjAipo+mG8TVrktgqmf+iCmPayWghHHEVnNVky6H5z3jofVomqcxNxba7Hu2mdWBqhm/91fEtcCYWHgnD+OMeYcrnyAeLaEHD0pUTEwLVMY/AZTPDSSPNyZ8ZwMAJoDcBbAw6WDJ0Oj/eOr3BionPuNxTFWNJjY5kXH9FfEvY569NH48vNoD5XG/ofkecwsoOuBDM8BtEMT5ndNLAEV/hIQnE16g5J24rQnrKLwaDfPFh6K1E7MZZ+yWgSQtvxAFvYwzbpvfOQvjT6jCAu0M/x8GxuCpX+WvSlgJIGNUbPD5h8K2CXkMYP/wOAGQeGH4H+EhsDAa6o2G1TbIGPhaH+wVjnfwqNIWwZpAeUwVHzbRE58PkZDXccT9gt2dl8TWrp15rINzrjqL23vZBI7jRjRfwrWsmwKG+DVYdA0wEhYe1IsxNvic8a/4K6eVuipSJGzVWUUBR8Iz/i0xB4haRNcDY+tgtsTeSjVPI32b6MFDD6fjzjeLkhHnxOtgQL2H5cUcgr0I827gagVTTnTPormpkb6TR5wfE57grRxnhLe5EcbyCBbgH/ijTPB/hx0OwZ+xMMFvi+mnkCN8gyncw97ka7Z66oeBqlnvDXpUzno7UJX4V7ZaeDZXmzhlpC6RDJXbp5IzzqkbMK5ejLUenvMVAAyXsDXTFFytPoE+G3ujceyOZBnrjL0I10pQej2uvR+AxRts9WQzLfQRG2OtIMFXPc6O+b4Tn/2bY853ecxThJhSWBphTBzvncoE1bg3Tx91j8L3DudlyuPvZKsm5nJvpUaZ8SN1M488Lz3d+gC/MlvGnecrE7yFxGcTDg8WWHB/EXGQ4QwFao64+QHsW/phbFW4sT9jtyeZaCGP1LWxdaXj/ds15zAV4z73Vwg+h7Hc5qlI0O3dOHjoxpUDSt8hkDGVgiuZspj3GKfgc39l3HLywiM1RjJUd2WyzOecfBMW/Icw9hbaew5nrsnjHvl6+p28MO5dq5dCwcppt7hrFcpozdZI3cnjnBdhQwJbNdnEOOPvggF8iht8kDbqwzGeyHCEyhzwBN3pL49/x/89/Rxuh3021RWN5KWxmxAa1Uw4n3XE/ggPhhw8KBBWHp+Gw+9NCKWsTslE/uz7qMa9lCsf2VCPh++3a6b6atWF2L+txzxtwnz30HyfCH08Bi0KgEpMD+a8jHEIfsJWC8yEaJ7o2kfyXkTPTSFQ9fQZHseUVX5H/F+xKd+FG+wOb4BPaFjYQwExY2CM7b6Kce+zleOvQnwvIw9wOiaXN4zNgmlEvxnuQuLfWyeYxu0RTB/JMO+wnBg+s8cBilB13Gq/I+5FeKk6GFbfUOebaFMwoD5/eWxdoCLhJX9lwjn4W+Jwr/103Jvv5Gfw+469kgkex0w9UzX+JqZywofYc3Sf0JDCdUIOxPPOuIeBmpVwe+zTozf2+MuIN2J4VG/tdCvCPoR+gnfISw1pvh0xXSjBf5spG389W51kroc3+k4u2tF+0UE1H/l0tk58EXIdO4fytESo4QpUjvs1VzsDvLYzy7Ie7fM7yN41lqICsBxuhDHtjwR5jsV4x2v3sDXCq/HwOyv60Brld5xoQmzNpEuBin3FEvhwAmoOYHNvoHr6s66tumjB3UncW7ZWOBORwI8w301DMqby2Camaupd5NlO4uOibzmdM0AkS3953J/xpOwLJWmp5DuA3wPY6KK4Lsgm4FkGYGfTz37HuM2+rbOLzmTZwumco1P1WZRs9gKWD1TGvYp55OebJ+EGmSZHzzdVC4MZ7yM4vzZRearGET3PCMwAGQMAhHkwmk0AFfxkLIBdGcT0TbjBHwacMY8zjph/4Pc6JDz95LWCSdKY/Yxz0t20XxqBYX1rT4kc2BTvlvFXgO1ezc93UPiFHlz7ED6/DVDnT/j+LwAU+8iIgmx35PgqgJiWJawdTWTjb+1NOtkLY+sFyMALrgU61BDitXlgWFX4+V4cOiB0k/iitdrYy4BCfY7/9VBFK0I9N1M+8V1ue449GscPbfZ5EGJ7psZfPuVpgD2doRySC+FeNVIVt7M7J6YTzYmtEYhwP27Ew2sTjKqfzzdVEE0q9l6uRTBiyfChXUX0VYPOAHklrlZi9ZUnvIIbd5Bi+IBz3L/YitjzgtW1h/JFXKN9ElgDC3FT/4jXbUfysxNP1y2cM2H16YKYx/ptXI+8k79i+nwkmz/AHHZQcaNvi+BF/7aJZ3P7CmeEr48HhZzTz0K6YTEeYCDAxuzFa7uBAn7AVs3MjXqnUbgS2HeV4/2OWat8FQn/xZPybeSbbvVVz8pkNwkG3egS6RJJXzFTNeHCQOW0F8Aqr0AYeN/p4LmNwukb9pC4RsEkX1nsDcg1fcFUTnodsmTXwWDUx8rP8Ql2yAbgvlxNgjD+slinrzz+xtFWCjPsifg2voFuIjEImIqJ1+NJaCVO24lCNv6puQGv27vU6qtJuhdsige925KNI01sHevzz4d4VROFTPmEH/qrpt/H7srK48qXTxrSfIMKxm6fpQk4Jt/vq5h0r6sWpfZnWOhmrN+PUz7+IIscZFBw3bj1w6MAUQjI1ubO5GrTrP1QTI2GHse/PbwxARL31qRb8NBKGe580XxztVkpvmqFnd2en3YiIzzliyV6wpGfAYJ66Rj5Txr7nxB8eH2zueJLOkaQ7T72Zzl6BdEZiM5AdAaiMxCdgegMRGcgOgPflRkIlzx/V643ep2jZwZCe7sRlR04bVfLl1vXiBRs2XiUYAv4EuzoV3QGTscMcHvXT+D2LBdDdiDlWwF0sI6URCT1fohk6t3IeEcbdZ2OVRT9DH4GuO2Lpew29U8ZR8IP8SBPGdPTwnslR1q+r3zch77ymA+4ygmF3xROHdMTEh38aZsB2lp4qyZloKQfbBio+FbNWoVujKNCEu2kJoErR6Fe5Yw7UKjXDl5WPZRU7+Z2pEY7hp/UbEbfNJwZoHJ+GNLV4GnuBIWpO+Cc9nBfmTh1OOcYNa8lD+SpTtBCnw6NuwQQmYfQvGPCv33OmdnDzZiPmouKDmRMzACtPXbbVDX4ls8QQx3lIRDCjH0NHVBsY3LtkdIMU5V6AUiNe3hZX75YLHY36PnXsdsFU8fEXYkOckzOAEjME/zOuNV4gJNCrp8KFSHeuZukytha/bCFa874JFAbF7Zm+oMoxhsQNkH7E+hjT37CvUuvHGkJrTM+AadmADGlpaXji4uzhdnZVn12tp4/CgsL9WvXrtSfd955iqysrFl6vX5KcXHxhHXr+M4e3w4Y+CTnj4fCgd4Fysbfh9KaFqqopgPhXl+gMuZpdvtUzajZtxM7GxWsZ7HbBLPYLwc/8JrZ7NYJRf6gdjYv5ctXWVJzroo4B1sz9RJC9o71fl72CoV8o0UL/GTua+26dQm1ubkz69fmQgvuuPLKtPgHDrvdPi47O3sajCTFqlJZjBrlFSad7G2TVrHdoJbWGQ2yOpNJVZebZa7Lz7Z9adSpXlKrJb/TauU/NZs159hstjScL1apVI7X64Uztdq0WVqtdhadk859MtcyWt4TVEUSTMQx85hr70tBiqcsYRkBXtT1JNwEgRe8pMioavw1rooJEn6NDrJ++Q6T+IwRZ7LzF+NIUKGG5SEM9F1UTv4PxrIRA/3oqMMRQ0Lz/Ue0jKTuDZ4AtO1Itviw91QIIE6P82wR/I/ZInid+yL2crqw030j8ZRPMJvlSfPnZ81at46XJo580sesDzLSj/v0L8eibVq39NweVfq/223SPzUUZVxWv6hYSQYWvp4rr7xyan5+9iqJJOV36ekzX8bxqlCY+KpUlvaGQiV8X6WUfKZRSbfq1ZIWrVLYpVam/V6pTFmnVYhvUitF72kU6S06tcirVotZpUrkVyhEHqVa6szMNC0hT2YwKH4ul4v/jeMjqVz4P7la/AiMyniisdMi4uDhanHte+HtuGLJwMH/jmvbgP+P+GIb5MZTWxq2TLDK/6Xgb1gj/+PXy5GHQ/AJ/r6NtPzChjTwMOdDvph6/G8z3vfxwHu/DK29MsF/Id/8It6/7rRsRahDHeuYkA+X+QcMrIb00jBo5siBD0VD7QhDI1li9E+K/zrgmPAEVzmjkN2Ue9oVbCwWhUGvVzxlsWiez842ri4uts8OGxCe7LMRblns+Ftx8bFlwQ5ee+30g/PznnJJpzMuRaK/TydsbsnSPrV7ToaJFiKtk3k5Ock2i+4RGEybRi0JaNQiVqUUhw9OqRByFouOKy7K5eYV523OyrJYyeNce+214+655w7ZNVdd9r1FC+Y6DXoVo1ZKOBgYKxYmletUqjkWi+HnSmVap0qVzqrR3lapSGMUcuH7Wq0kj84x2AOKDGiP3T69Nceq6iy0zW/PNlzablPc0muT3d6pF93ebZHd3pWpvqkjS39hR25uQdey+fKW4uIp9L7T9cCjEhvvzkmWQPX4X/vK4uvwYCaDYVAWPywJ7MPWXVCXAroVkMQuj93hd8T83lcZnzOSctOHzRcvlbttUqq3ZvJ58FJ/RTxKXoikcod9USStS7rVKBvfi3zUm77K5O8Fe7Oe2s4TtPew2TRpCIm0dOTl2ST427Qjn9Rms1gGr/C8Uilqwes+wSK+fN26BSS0Eounfb5WJ/+7Siu72WAQKdatO1osn8bdeO6agq5MwyavLpX16ZO5PmOyuy1T+fq+wgx7ePEtX758ktVqWqdSSitUSpFfrU7n1CoxDhgGvisVIi4zw8iVLi7hli6ZX2ex6K9Rq2XmBQuKc0sXzb+huCj79flzC1usFh0ZIEeGqJCllRcVFdxmsxi2qpRCls6p0aThXOkwpvT3FYrBjakOIWGHSWM6aFbd0m1R/KPXIt3dZ0rvd2kTvT5tsternO31aZK9Ll2yr88o6u03a6u7rdpXOi2aKxrz7Nq9lx2dv6GasnJcYx3Cy1oYXTkeAqfK6FiHNZGpSrksUBH3LLxILSkjndTaw3rlJbErBNvRQ+pvTNWMq92V02WIwE7bA4KfEz7kI23o6vFyuN/zoDjzKrVBwUV5huql4GbJ7bb6KuI3+pwT7mKRZKPc1KkuFqPzZWXpU4xG5RVKpeRZpVL8hsmkftps1t2AvYmBNu9kVPgej3DJoJSJN+C7C6/rNxnUr2dkGBRkTHq9ep5cLtqF40u9Xn4dearIBUKhT9P1Fye15Vrv7zdKWr3mNM5rS2W6C5TbW5cX3t5y2ToU0gUfEgQcmAy6e9UKSYNaJSLPxMFD4ZCSYfCHmg4YF4zbp1KId6jkovcwno9MRvVevM6NA56HjI8/WJk0rQLe7kG9VtkCA+XUOKdaIyRj8ivl6e8pJEcZU8x2jWZqk0ZR0q+SPOXRpO726FPcHm0S69Mlcz59OufX4VAmc4wmnfOp0ziPKoVzK9NYjzLV5ValV3eZ5I+22PWFtQBB+HVBc5CXl9SUlzGv2Wi8vs2g/kGjWXfVrpISA7dhwylZpHwoWp46yfNlghrGcDnW0T+w7urDCkhDiYrwEPfhPU28Gq1TcA1bk6CjbidnHBgjsMBbNi6DFGeQnK3FRQ2ADse8MEJYKsY1+6un/goNyebyIvkj2HxMo5k11WDRlOi0qqeVCnEzFqtLpZDs5kM6g7oAhjHJZtMrVTLJHQp5WiXCLL9KJQwYtIqPMzPNRhjaFJ1OsQrhUiPe36vXKf6Rk5ORE0LQeJtiH719YnvpvLW9ZsWXbl2K361P5NzZyt6uc5f8vftX6/PZd98d6FSxbNmydISMT+s0MnfYaMgotGoZjIAMKGhQGv5vUk6H7xqFmNUEQ0EYWtCDhV9H3+F9vtZpJW/B8LrIswU9nSgAY+pUydNfNKiklrAnJqOuW1ua2JqhPrdXm/6mW5XW4dUmB7yGlIBbn+rpM4r7+jNU3f252u4+u6q7zyjp6Vemu9zSZMYrT+S8ahibOs3n0oj2d+ukL7fk2NYcKMX5KEzUqu/u1Ug/6VeIDvRq5E1tZsPLXxUW5oRD3FPlofgHOvZR3s8EVsY54W5oze8bEB09Tsd6EicFyrwfmh+/9FUL8ni99hM0SzhVYx7Sefgq1eopWqAor+FJ4T3h06EcxlQ9y8l+pdGMpBFFDp5CPRhNgVIpfRnG4lYp0gMqhbAF+5Y/GtVqs1wlvAB7DYRd+B+e7Bq10J2bY31j5bJl12Rl2R7QamSvKOSiHhU2+waD6r/ZePqGjYnCmo6FecYek/w5lyq526uexbn0KUxvacG2zl/+9C6u/FMKXQeezBffcfHk4uKc8/U6+RYsfp9aJXWZDZrtGTbjFrNJuwW/l8FAdmEcB2EUjA5GpCXjIo8DI8GYeU8W4ZkoNPTif10KmdCD6zuI8+7GXmqTUi56XiUXXmC3qwc8acu64ilNJVnn9lhFH7oMyd1ufTrrMqZ7ey3iXZ021YsdWdq7OxZkXd+1au51XUsLrjuYo72xzah+oFOv/KBXJzzgRvjn14g4t1YScGnSO7pMyk092aYfdxu0L3qkwt1ecbLHK09lurTKugOZmTfuKzykWDSkBTWMF/FGVadMZGqTN51IwTcskglD2sxWT8wcNTD5YSEOL7JxlgnY/ttDcrfkmRzjy9ldaaJhzNs3fqnZbJ4MaPlyjUrcqVYiBJILGRwVWpX0Urk87S6FIq0NCxhPfyGrUYt3F+Zm/iI32/6aViM/iMXdj9AvgKPdYFT/hfI9IXBC8O4tpeMb8gzLezRJWzzyRL9flcj169I6W1YteOLga69YYEiHdyDEfBFiCO92OULPT2DgmxYsmLNm6dKFOXPxFDdplbkGjfIceKpfaDSST9VyYbsGY9XDO+nhlfiQUENeC9954wofEngokQvAxAa9RnaRXi0vlMvleFakDoAm5JXaFuVpO7MUL7iMaT0eXRrr1QjZfnX63g6b4md7Cm3mdux1aC+097LL+INDKNyIsPZAXl5WW77lrp4MzRavUuT2qkSsVyVkPfBSCAub3epUl1+SBO+VzLnV6b2tFvVzXxdm64eryzHcG00a8/BOm0/4EA8pzkIr0elzTikYVR4pfNG0aWMrx13p3xyzh1Q9SU31sAsbRPMbEOUOtkqQO9yJ+wavj8nN1c80m5XrsSfqDYdICoWwXa+Vb8jNtv4FYVcfnuT0xPfZLNq/AzH7qVGv2k17kuD+RcyoVOIdCA9vKiw0DUD3G7Hf2jEvx9xkkzzZq0ht96qSA70ZyoaGdauv52proZR0OKCC32O5vdyEZ599Nv3sFUsW6jWayy++eOFkMk7+COWKsrK0s+bk2/IKc+1/1SkkB3RyUUBPHor2Qzh0KhGnB/Kno0NNf+dDP192tu0jvV71mEol+bVCJv2lXCK6XDx7Ns9NIyNpnpNxdo9Z7ISHYfzYG3m18CIa0eZGs2YxQfvHmmMK1RpWr57Vvmr5OV2Zlo9hMH1edSLLKBM5RpHE+eSzOBZhoF+eyrkM8v3tRdk3t125csQZL6xTkI1OirsG2q2eoGM937i6Ytx9p6t10LDWLFujEPkdE/8Kz9TLyw7zSAlE8Z0xB/yVU53+yplVoBLtg1xxf3hPhYsnFO8leqoM68NO/sUx8CaJGo30XsDFjQjX4JVEHMKhgFYjdVlMml6EcgEyMoNO4c3Pz3gjy258Db/3hBA27D+ELdjD/DU722AhwCJyKGRQB9askTQumnfz10b5Bx12aVnj4tyHdy0unlubn2WtyzTb9mUZM/cYZFl7ZMnZB664aG3H4//3f81P/umZHdddfdVuTUrmLm1qxi6tOGOPTWbetcgg2givQAv4IjAeCrNtG5Bn8uppH4UQS6sWwiMJOT08rAFGhbwTHgJCGBn+rpb6MWYP9n0euSy9XyYVvm0BgYIMdR8eAp2Zmp/3G8X9PpOQC1hEABtSAtgXbe0ssF/VdPbCJDKoDQJBXOSBjf8ArM7ecsv45gWF8zttync82tQ+nzyJC9ChTuFYZRLnUaT4O+2GT/YtLy0caa/E1s2chnX0JNacKyTBzGCdubG+SJb5DTBv0NYU+SWkXsLN8PDdC67oe2ydXn/yy2kE3sl7parx82E8ZRTiQV/aB8x+j798/PPc9pmXQ2k1hd11nojdkbQqUJnwB2D59Do+P8WUx9UiPFx5umJX2uOYzVq1Vin5hUqZXgNAoR8GQmEdD0eH9yAI9QJYmE1YkO34X0ABRAwGtysjw/T7VecszUe+55h9V8kLla9bN71meWnWzjm5Z28vzL+lrjD3p3tybb/7Okvzyp4M9Uf7dJLP9mkkX+7Xyx0H9CpHg05c3mQQbWq2yj9psSs/OZCr+U/DPPP6faX5CkKvKJkMNO9y7IGwv4cHgjGRZyJPpEOIpyWAgg78XQMETwXj4vdWeA2ACQYh7PtGozaPrr8BrIguU+rDAEkYRpvMsdokzq9OYl269L5+k6q8y2J+rMWouWKXVbNuj12/9murZm29UXL2XqMibzPCv/ASalq4cHJrjumaPk3qVj/yaQGgfgHyUPjer03t7sq3/rb1tttGlKnNk1orJ64AB9QJhI505d2U/8Q6exoP97U8o2Gzchq3dfrqgDPhcfyvEnt6NFvDa50gD1RPvjjcN3gETGP4p+Q2Qv7WGXsP9SbFxXSA+r6Rc066Fq0hselG1jyElPC6dl+jS0Vl3IqAI/5vUPXsAKTeBmb5r7kdU05naUZsZqZBlJtrvQo0nPfUClE3DAth3GHGxD/lyciwjwLELGotKcm7d/XqUgUlToc6S/RU5vB6WnidxZazduaq0vctLjC0nL3I0lY6P6t71dL8g+csLjqwfG5x3Yp5C3cvyZvXsbQov+GcRflNKwoM9D5C4BaBmmQyaO7F/q6PHye8D33nkT0yIn7vJB14GARhdh7N4+CZYEyUtFVQ0jauOyttVq9N9LBHn8r4lbM5RjqTY2VJgL9TgNKlBTyqdFe/Kr29S5PW3GMQNXfrhE0H9eK6hmzDr2oWFYnC7AfKmR0ozsrs0Yv+5ZeluP1SMc6FEE86g+tWJzc1Z6pvq7/99hFNvJP0MqSWfwTjaIAn6gNl7Q1vRezFLFGG0ABvYO3VrkvgaielsJUJa8AmfxlrtQ5rrwN50j+ToOZQ7+eIvo6ewu6aRAUa/P7ZVy7YiAE+wGP26JN0rA/m0Zedc3R+56RHfA7QQipiNrA1E/JPd0sXekovX744LzfL8jLCuwaEewx5p8g8D/1Ox5w5mR+ef/75xHs75V+0f7rzxhtTlpUuujLTZrzSrFPlELF16dIFuqULFuhMJpkpK8N0ucWsq4b3QU4KKB4f0oWPMEQehNSDe7vg/+CpWHhfHwzqPYUiaEzkmXpN6Q8DAmcYDbwSjCmgTOV8JknAY5H6fQYRG4CHC8BgvSYh22cV93Rk6z5qWFm6jo0wDjKq/QvmqHrMihd8CoR60lTOL5nJeaUzAv3adGcrAJkNgyS2T9UEUik6i7IKhHF/wRr6CKHeE+zHgtTjlajTw42tm5KIpg1XQQH4baDPf/c54rNGRWkGbxg7kmUgEV6Fp8NibOiGnHSlp4q/Km4+UzbuMtYxLetMuFvsIeLXXbjanp1lfgHG1It9FG88QaMKfoehcbk5tjdWr16eh9ef8mpNeiCtXr1UZ88wvguo/gAQuk8sRu2buVkZb+RkWt/AHu0dhHE7NHJRnw5oHkHkvFcKeU4aJ/8AGGBQBI0JhuezWjT1Oq3cqZClP20yKTIGjMkoQZgnZPzwRoQ8EprXna1ra5+TUdGdpdrebxHv85hF9b0ZkrquDPkLLfm2c4jNcDiCy8W0zyvU91mVG9yaRBedx68CCKFKYvoRtrYUZS0mIOVUGc+R5wEcPp6tScxnnBNv8jsnrmYdUxKH8ln8mt08cxpAiwJfBbqmlAlMp531cKyBsq8SEwKxaZ1gICk5lIui15DICs9CR43T6co3RY6NNuSrz1uitmeanwHToC/olYKGxO+f+OSohMOCPAhKz2uZmbYVC4Oh1yn7ojFQYlivU/4PBs0CFGEQsnmNBrUb3shtNKo9ZqPCY9RIfUDtGEDkofGRUR06+HGHQj+iFyFX1Z5tNz+RlWE5VyFJL7FalbTYYhq0WbMOGpSPYMFjzyTkGErAapLY3gx1fduSBb9vLS248mCW9rK+LNXlHYXm85sytcb2i0qnHUlurUM6oGle7oo+vfAzjybJx2Dv5TWkIveUxnTatF82X3Te/FNNCzvcmAXx7J6kZAAQQmJEDJd8yzdvwNrj3kKFwmhK2p6ylXUaT0Sb+kUlJZasHMvDKo3sa+Rn/LxXwj4pkicX3HsQ80BKxrZRp5Zhr6VVE2sinGca4rDDpRaHvZxKI2w20xyDVvmmXqf6FxK3T4Lkeo/JpL0xN9d+fVFx7vXFRVnX52cZv59jN34IVgbDsyPAjNBoMDYevaMxE7+PDp4dweJBcMBk0ty1aNGimfhAQh55KtOeBQumt9hNP+gzytp9OiHLqBGewRD6zJKu9pK8PzdesEbLIsENilACscQHW6S0X2opyVC02FSP9WtnN4O7x/q1KUAFwUVUp/e3ZOhf2HfpeUTDGtGvb5WU14jO1AienGBtYkMgGfuCWiNtlitFDPJNABuAfhGyNxA6heDmIDjBwnO44Dm2aRSSF5BQvbGgIDv32muXHxPZC1+C3Z46CR5GK5MJsxcvXpwaaYQ0FtQhKU0m3XzaKy1YsCBt5cqVU4mxQcdlgMdBjJ09v7hwQXam4XU9jCkIOgBwIEMnQxo4BkAUFjmmAzqd6k6qZYqcSvIotJ/pNYsqQMYNEKLnN6Zx/VZJf0ee5bmvV5YeN8lKhtTz/Wu13XPsD/br0rd5lIk+PyBxHwEYmkS2V5VS15Rju6IRRNcRvIXRU4+WGVi7du3EvLy8GxVyyR45WA0KGAsZkVyR7jaa1Fvz8+1PUxIXHLwahE++8MY+FPoFQM/pBVS9X6uVbQQB9u6SkqL80KIdFHghAq1UKfo/mVz0BdjfTxuNiltwrM7ONq1C/dHqhfMK184rLlyHfdLZMKpVxAPU6SSrLSbVtVql/H4Y+rPYO5UTVM9D4OSVwgfvnQjhQ4gaohhRmKeEMWl0iqOMifYxzTa1uccgfBs5Ij+FZ37wCF2G9L6uDN1ztA86Vm6IyKoHr7rU3FU69y89RtEBjybZ59emcQwIsXS4wSzvzDO/emDlyhFnPYyWtRQdB0Ie8OssKJ77WA4yqAILEd4poNZIdlky9JfDW5xF3qEoL3sZ9iGfB/NO2NiH8jfI9xAhlcXrGaVK7FIoRXvgBV7Ky7NfUFpaosjNzZ0YSuryG3B4CatMKdkgkwu74fV8SpXQje8uoGwunqEOChAItPx3gCAuEFpdAB1wiN0wHi+Mw48DYwiBD6G9XNCgiEpEyF3IW+F/CFlZnP8AykbuLC093DPReFpy9cpeq/wfHm0a8kMAIJSJrEcnbujMNf28/exStNU5grEBEjKVUrQsXVR6sMD+nkub1kNeyKcG6ADmAxgf4CIK2dYCc/OBS85Zc6oY4tGFOgZmgPY7lgzLRQqlZCeMiJUr02lxV2m1ytvz8/PTwmGYTJaUrFSm/4EMgH/yE4IWovIEvUFw0097LblM6MX3No1GtgmG9nBBrv2qOXPmmKiEHDD89OLiwisy7eZtgLZDOa1QqQXP/j6UMwoSWYPAR/h7JKE1kinOgyPE2KDvMCximNP/YZQU5jVarfo7LgJ4cOQtqV9RrDw4x/gPty7NjxwR269J6e3Rpr3TXqhbQGFg+PUECpWjnquhKDO/1aZ7sFsrdrg1yCmB5eAH48GnRHinSGNBeHU151sqGs5deUX1L384YxP2abUg0w5zTzkGVk50iEfOQKzRpsnU6RVvgWDaKVeIOxASfQoC7DXFSKyGN+oEmxcWWvUqreRFwM5EzxmoMeK9AQyJ2Aj8voU8Fo8Ehipb4WWw0MttNssVJpNphsViOau4OO98AApV4P/BmAgwIOAgzPwOJ1+xD+Kh77ChReaODv0tGG4GSzG0MEQyKDIkfh8V5BCCES/eDcbG1Y8++uhRidP6Gy9Wdqws+Ed/hsjrUSd19ZiTP2jLN168A3szmiwCHTbBuzaUmDTtufqbu8zyj/o1aZ1eNXJTuMYA9pd+OcI6VboPBvZ1W47t5f3nrlm6d/1lE7bjYfRVftYt+4oyLt+3cmXaSNOJosv7zM0AXwSI8KcE3uMhEFYf1+rVD2gMyhVA9wj1Cus7xOTn29IgUnIHPNdOYotHeo9gXidM2SF6T5BkGsz/YP+lkPRlWk2/t9l0EotFlQ5vdRGKCv+NBCrYFgRbBxkMEYs/IuEarrg95JmCe7agMQ8gebznggGFSjN4L8YbJ9U2CX0493/mzs3JGQyerv/hjcq2tQtf6cqU7+8yil5rzpeu3Luq+Cxe/+HGdVO+WlyiabWqLug0Sp7v1yTv8yqT/T5U7Xr1aZwfhYJeDZVsyHu6swyfNBXZbt53XqmCmB70WR3LFy45aFFuOmhWlDfmW6/es8B+uriXZ25VfYc/Gezx3IlkPFTxasfNDin3RAqloExdqVCr5Q/KFaJtCpRfUGlGmCERTuqG8zxB+g7tqbBfwf5Gp5d/ceUFF+TlL7Cl6Y2q6+D5PsPeiKB1GFJkLutwLxQ2rjC4MIDaHaqojYDtg4ZDBkYlGME9XfB84Bt2gQn/8IUXXjioKE37+h8IWy9Y9eOWIssDjQXmwkrkzupQxt+Wb9K0FuovOJiheqpfJ9zplie6fKoUlkEylozIo5cyLrO8qytTVdUxL/d3zeeuXNB+0UV8DoqOxuXFs5H4fbJPl+ZyKVJ7Ow3CZ/fli0YcIv8Or+WxcenLl9snZYHlbTBpblVrZK8TegcUD0WF5KWCXiiUgwp6BHgmgtYBSOyz2c3X074MBrlcqZF8QMYI7waGegRdiSeiItQDMTUYNh4K0w77ORi2DYR+YaZDMEQ85LH40E/Dh4lUjbs906Y9/0hme3jmiTPXdc2lil3nLRLtwZ6obVGhvS3DcEO3WfVkv15Y7tWkHPSqUwJeTSoXgEfyq5LZPp20r9um+7Ijy/ybxoUFZ28/f2UaMeX5sBAead+FF8rbcsx39GlTdgHlY33KRJdHm/hKjy1FN9yE6thYIdFRDmcGIO1VHA8vNtOKkgsYwqVKueQJpUKyB6XgLl79BwlPFS9cEjQsEEq9Op3yuZziHCmx0/H3JxXK1A4AGFjgwX3OALsiHJYFk8KhEO0Q8BD2UgP7owigIpiwDXL0gglbnB9l4vm59g8RmtbD4P63YkWp+XgXi71MwldrV2r2Z2mvcVukf3fpJLs9OmkXQji/D2IwfgMgb5MYkLmI7cpQftWaafpVQ2HmAtCKhPBih7Fd9l91lbktN+8vfWrxPq9iBuMjapE6GcaU+mqPVayPGtNwlt0Yfy2xITQSiVQqFRZbLOqCoqJsWVhohS5tPVAtoVA4EXstkUajXKHRSf+g1Ii+VCjTWmBMVDcEkqywC4v8g4wM82IgglMzLHqUTKSj9DydT7KSR+G5f6ihCoeLkSjd4YhdCN0bgMDDXihkbGEvxidrYdBKYa9Oq3hx8fw5eYsWFV0kk6XdFFJfOuzO8MpSqDZuyEQ4l625stck34DE61cuXVK/F97Ei5yRDzA3xFVAVk1x9ViVX+/P0D5+YMmcJU0L85JQcTtQw0X1TQft8unNuaYFHVbN6x6dsMsP9j2jAqMCZRhuZWpfh072bJNZLRvjyyM6/GHMQKgCV/M9kEx3YFHvhMH8LSMj42wIn9Ce4zAhSjK8oqKiVOhCzEE1681ag+KvCPP+haLDPxqNuqWECKI83gimwidKFMnBg5HxsDqtzAPvBJ2GYNVu0POEuXWH6zkcCYUfYrOHhVLCTHG+FssNIOU/NjAoiDFxC6BtpXLmYTJmBFGXP3HtuPpFluxuq/jOfrP0nX6TuN5tTHV7TWksgQsMQjoPAIY+i9TbmamrgurQY01giu8DGgkvdlghZCNYH/sWFBe2Zeh+3q1L/9KtSYYxgnmO0NePB4ZHke7tMcoq2wuyr2oPSqpFv74rM3DHHXdMXrV8yYVmk2Y7aob8yC25tDrFp1lZ5lIynmPMAy9DrEVpuQYCdVarNZG82cKFRTLsZ/6igrAJPBNJbfm0GsnX2ZmWRzJt5iuFaYn7yLgOFSJGQt6HwImgqEvQyA7tmYJscZ4+RHsjAhr0in8VFmYWkyEdOU4Kr+rB9th7yfK81rm2B3syZGU+o/Cg15DO+MwSMB+EoAGlcowWdUwaYX+nRbmludB2T/2yRdkkghLeE4Xg8ljKQX21OF/TYDPc06GWVvcDZHArEwN88hYghRelHH3qFDcMqaI533Z917KRE1L5rqzN0Xydkdreh40zz2aT6DXy5+hJD4YCUDlRe3au5QeUcB3iBYH9bZKDCfEo9k71MEqqJeqDMdUg7LrHapWrVq1YeDn2NwcI1Ytkpoc9TzhJG8lcj9w7HfpZ7AHr4Svkxh7PybHpjkyO0u/I90xtg0hkR6716p4czfuuDGmP1yjCPih4+LAf8mhFvj5tWmeXTerYX5L56I7L186rfPiOAVY8b4xAPtuQL+oqNNnb86y3dubZdveqQZCVwZupAE6A4BrQkVdKCfSrUrv61IkftGTILwMgcdrlrYd4n0bHy6jwiquePoP9bNbUsUJbp4VF1CDw4IQokFPK5ekqnVyuys42yy68cNkM+j+hXkW5GRlWk+ZfgJkRjhEqJzloz7LctxoCIkOc/TgoDdnAo/uzQiaqAXpXi7DuTVCCoACrsiAsnA9pr7dQRg4psTBEfngiNsy7iwzzjoTLSTAFFcJfWizam3NycqRHInZ80V5xsbA923wpkq0b+g2SfW6jxOs2i1g/DMhrQNGfRcL02yTNQNrea8tX/XzP4vyiI5sMUM5p7wXLta2F9gu6C2xPdFuVZX2a9C6vAvsieEbsj1CinkLClIxbJ2oD16+8NVv1ePuiOQv34AE0kuUXQ7wfw3pZWFi1p3zK7NPSf5ktm53KOidd4y+fupytTD6ldT3DuvJhvJj2MJk5ppXgbP8OHmMDlE9fU0iFr+l0spdQvv5jjUYx1243ajMz9Ddp1LKvgzw8WuQS1DAZfjZ//vyhGpMgNZVnh5uRpF1Bh9VgyCIwo6gofxHKIVCAKGmFkfG5Jr50IqSDF2RRBOuneKQuTCc6xGgIlVaQzoO0E4jdb4uKMkhf4bAmAhtARO1csVDWqdPc16cX1bj1KS4kWlk/PJLfjL0MPFK/Qerqsqudrbnan7bmKW17MT+RLAVqMNC4oEDclpe9uqM465+9FtFXbmM6r/TqB48PKB3n06YicZvKQOKro1cv2txhkf28OU89HzC7mN4/1gyJD2Nr9Qm+bUl5TOXEW9iamagWH7nCxqAkctVZRdB4+K/fMeG37NYUyRjwTjEkvqg3Ki9SaaUvYZ/hRC6oAQRTH9A3HyDrDjzpy4DSvQhp4c+xoHmGOF/XJBf3mE26P+TmWtKHYbsx9mvt4/TF+inE8SvKzc3IzjRfifO8jopdXqQ/yFIgICGdpwIFkT4cCkL7DtGKItnhh/H01NJ2eLqfK7OVh23sycPWX7xC2VWU8at+VdoBjxaCKXpU0qK8gjHDG9nEXE+muvmgzfBMU0HuisYLls8e0HNAnmg7OnM0FhdrO7Kt69ptmid6DfK9ACYgBQbj0eE8KHH3KRJZtzrZ59Int3cZhV90mZUPdaDzRiOaGUQaJP3MNwKAwbesWzdlLEDjbK1wJlMz6U40lP6UqZx8/ohWfrNs6XhfjfhOdKuoZxzj32arZhdRE+hhLLQz8lIKg1BukYRqVhu8xmqtVvoAbdx5oyGCKSS/qMSbOHNhEmnQmERe/O1TvVZ6DRSAFuRBwRUad/OuvvrieXfcdvO8O+64ed7NN18/7+KL185DCcY8s1k9T6uULTRoZOeQFjntnXQqOcJG6VYYMX0ezzwfKDxEmESeiSBzGgdY40GDClOH+EQwHYeEUkJgRDtKRn4+cyaP2A18NV5wwezWhTn39thk9S6+aQD2RtDEA+DAua2yQGeBadeB+QX31i/KVUbKdpERNq1aJW1aVHJLp934N4AHtS6tqN9PIiuAuHlgQZUEI0ryguS6v9sk/W93pvoXB3JMS/aXFguJRhQ5DmKMt6xdoWzLMdx40KK5t21OZhaHfN0ZuflD/FDeUdRM0aH/8jPQ1GvwVk77Ndb27BFzFmxZRipTOe1DyHRBcyx+N1Nz1q0Q7yc+25j4okUT7IZhywM7vFytViCZKkHZg5AJeoTgQuYXdZCtQInQHnVQZrgSWnrODJvBmZNtcxbmZTqLCrOdBQWZThT0OYECOjVKKbQWhHRsw7m+Rtn4QTJInAttXyi0OyTMH4bEKeQjQUwY0y6UTWwHYNFDSB+fkyJ6UoiiFK6n4ilLSmiHK9MfpT5S4Ymvg47d/rNL13Zma6pcNiGQOpSjI7TzmdI5CKJ4OgusXzYvX3hd5dlnJ4V1GWg+duP3ffOzVx3MNj7TZVXBCIVuj14U8OmB9GEefEhG+9WJPohV7uuxSN/qtmtvbyk2FzbPy0nmw7kjwkzaZ+0/e5mlrdD+2z6LbEefQbi5yaI4ly1VDlvS4HQuKq4xdZIX3sgPyTAobHmhK/E5W51kHjEpBf+2gjX+8rj91OUCGnmdfmfCX9nts0ZPW8Mhzj61rcQ+aC7as1wNVvWfsE86EKmZFw6pgmhbKOSjBR40CBbsbEgn8x0oWHid0M8oxoP+HhlCEMU7xOM7kl83wO+Dp0I9FdgKsl+bdKo5JpN+JfZZ/wYXsB/0owFjAj0pmPANy3qhfgqgxhvZBgMJ8fNfhNw151judVnFHd5MgAMZdEAL3Cb0dGWpNrYuzFvXdQOPrvFoZuP69ZO+Wru2uKlwzuMH7aodrgxhv9uSzvrAevBAmJL2Vl6dOOCmPVGGdFN7keW2/QXZFpIri0zcRk75RnifA9AK7Mi3/B2CLC0eY6ofe62tBy2yi6hp2hBvz2l/GXmffnSy9DvGPQRHQa07Weg+Nvu2Gm5g645ON3zjAXJ7108IVE/aEBbl5xtEoQObv1IwD4MZ1S48dPHxCPdmz5tXaJ4/v3B5Xl7O+YCUL0ai8z4Yxs7w5v8wDhwfAoYIpPgeNrjDQkHei/FtX3iPFnxNhP5eRNkGhWu8URwipfaDu/cXJIfR62ldHLEmkAS+HIbkJLIsz7PDQd5JCYBiwKggnqtTSz63GBRzwze2RZ84pcck/oHHmNLmtwKqNmOPY0ll+u2KuvbirFtQQs7vj+jYB05d04pFd7fnZtf26zX9XpOMZawSLgCkz68FXI7Ga/1obNCvSa9pyTPefyDHoCMS7GClFPw5EUbvLy0VtmTa1nRYtB+61Gn9CAkDbk0SRP3Tajr0kgv2Ska1McVChdgOzb33+baxkPamdke+qsnvsPXTTn3kxe5MtyCWrCKrJQnaoHcSNEH37oddZ6Bd5jCeDrEEQKAMfLVaJ39Oo5XVoo6pT6OTB+AFoEEX7HEUKqgboPkcKsAL03oO7WcigYKB/U2EAOShJCuMgAoHybjAoyOjII8TPtQaeQf2cXcuXGgOo6IxKH2XQSzyIRQtNgKaR+k5Xk8HGVQ4eRtsHlCNZO3KcBcO1pw8Gby6O/0GYSvPqdNDotiQ4uvMkH6wv9DMl2HQom8syshoy9E822dVHPQaEcZhP+UDVM4YqKwikXVBO7xPp4I3sT6+P39OCYEHg801GdZBCLMcyLdlHsy23NRjUr/j0ombPCqJn4fMoQfh1qZ4DxoV/92fYSk5nn75MO7liLwUYqnTmcrY66GltyfcW4zWOdb3DrYmrmTIH0rNdj0VAh27RWAk/TDvFwLzUcdmAQxJ8Gv0Ee2KbNlBmuGw5PchPLnCi9cM+l6cE7K1euD2YrYejXdPs6QSyXKpYUhSefoHUkV6F8rGfVjMDBY2yrqDniRkODz4EClCOYDqwRMgtPNA7stN+t3YE/F7rPA+i+/6FxY0CYVj4ZCMBxYoVAwfIaMgdrneoGybt6DotosvvnggxUB7OjRXWwQv9kGoHJ43JvSrDX6neikaM8JDi0l9E3UgpJtN4iXojXSryyJr9FpgHDhc5jTfwUzZ/76aayzec+266fsXzlnSYZd/1GtJdntgcH7IcvmMMDoTSs4taYF+c3pTp032cnO+dVXzinnJR7bYDHuhLhB/mwozcjqydD/rsio+cxmkbdDd88GYWUYvRf6JByz8vUbZrqZcy12O0sIh6dkNedEO8YV7NwomQBsv3bNZoPfSOhxkfWNtWljnWRfTHgmy3oe1QkJ/Wxf+9syx1jZ/vk0CE52f/UKQLIAFzocS6z9gLE7fFsEBSMx2QTq2J/JAONeDwzdYR0D8zU/NeI98D37vxvk6oJq5Gxb+AVsZ+yO2brxiRLH7QSaZ4GOFWnqeTCH+Gxol/0emEP5XrZV+DpSsATknDwACJFAl6IEkPQCUr4cPwSJKG6hDH/TsNmXZTE/NKcr+i8moeR6Q+RbqKsiHhrzuN9F70pAfIpmtYIgXWfTHG2gIUOA9DQyMDrVO1m7Pttx+pA4fPFWSziC/C8azG68P0Ht578SjfiGgRCFCKkn6mwytls811YIB3njOwkUH89Qb3Tax12sVc30ZYrY7V9XYvLzoTy1rlv2gvdCyyWUS+T1GIHwhxVbGmMK6LKnu3gzxttbijEfqz12eRWBG5FRS44C2lflTXZCU7jGrC9szzT/tNim2uDVpbrSQYf1ER8K1+7UAPLQoYVfPdverpTVttqwHWtesUZ2JnBO/D9o8UchUCm7B+n4X63An1nYbrcuj1mo5CfrHDNpCFs6C1vdh9kDvx/noPM04an1lMf+CV7tAQC01uNpxVqY89iZIzP4db6TFf1Sn6qH0vYnsao1BtJOQP2D0h9E2ZgnpPJ9uQ6IFQbC4XJ6chDyOTq4Vok+RzAwmRJFer1wPY0LZuuxV/O0hytsg1wQWOECE8OLlRVNkDdnQciDOHZWxU/m5waAmjfJdh4rxwuKPh+s4hJFB2kvxYpa0Z+I904C36tRoVD8+UoqLPsdmM2YCnPgnjA7aFEHo/BArgip5U70o7/jQjhaYYe5gNdgcTfPsN/dYZTVgPDBeo5TzWBX+vkJre0+hrcVlUvr8BikXMMgRhkmgcSfh+i3C3s4M+QdNEJHZs2JF8pELn9rPoCmaoT1Lc3mPUfxYnybtvwAlWn3KJF9AAdF/SHwFkMTliwdVEGVRJfei7+0HHWbd9Y0FC055b+IhOiX+ZTzcXSuY6a8RlGCLcj/kk7fAadDaHnbv5fDaDm1vAmSY8FzvQRH2B2xNfD618Ax+KGk2106bid6ymTCqG7ER+zcMqhubsGF9KP9B8GAY8B5/xbTn0ElwHQmo7914SEB9OJNxil87wBQglgDg8TRSDDIYDLqMDG2q0ajJROn56zCmAKS/oFSEA0Ygl0n2AEI/N7w3oYVrzdQtMRqUTp79zYMPYQZ3CKwI1SwFwYZQ6UXQq7DkkeSE+qH+COGmC4b5dxgTtTU5jMlA3gp5rZ+gIXUbX1QYIbjC92BSpaGWKm0/QsIbQ8x2Ae1jvoYmX+O87F/0GSRdPh3oQzAen0mOfRGMSItDD0MyyjmvUc72WeS9bXbN3/bnW0pIeejI+W74/nmi/SWWa7uskhfQMHprvzm122VAUzN1GksC/Yx0NgwJxYPIRXkVs929utS9B/NNG9pyLHO7QJIdDdoPQZFKNIyAOD/SOucxldPfDThiu0/GoMgesLXpp6bUfofgV2xF/By0AU0iZdhB1yq7WTANnQGWolPAi+iu9jU8zKDh3YCnCjU14/sxVcR2o0XMJuSgfsTVqqzc3stGLRwaefGUb1GKU/RoG/M36mXLV8vyh5iVy0StoBvdsw5KO/SeUPXsOTqNpAraCz50HPRpEHKhk0YzEr9fw7h2gDK0VaWR1mr08lp0GKw1mFRlOp38fwAM3jKZta9abMY/mizah0Fv+gVqn75XUpJPZd2HGRN91jnnLM2Bx3wXUDm11zwUPoaEJxXylH4AKy/lo/cTPSDC11R3xUp9u13xossgbPMYJKASycCCEMMj4SDQwSxhXSZxX2eG+u36BYXFYXAgWHZun9RQaFa3Zmsv6MzV/KknEwWDRtQ6odetzwoWhRUhIkitVK8EeS/Wg0JCoH9NPTr5e025xlu+uuJidEk8+lpO8YPxpE7H1q+dyG5X5AcAgQecsZsRiR0M92s6UeQFB8PAkJrRb+yfrAPa+NvQIGCQe3bUwPgu6gj9EEf+kppEDcVDwVrROX38u/6KmeewFaK0MxHSndQMB98Ug7KGdHiAnyA5i5wTny/iRUkUcvFuu81w71VXreUhUjImUl416JSPWozqZ/OzzU9bdKp7dUrRDZAtvlSrkq9BSLbCnKFdXliYtXzRovnLFy2dV5KXl2kj/h+arcmXLl2aQnw/nGs6weHHKi0n72S3m78vlqYiSYvm0AM6EEFeH8ZMcl5fQVr59shQkYCD5uKM3E677sU+kwoNzQB5A2zwgxIEo+A8Foj02+VfNRcZrgYbfCotCiq1aF5TKG8p0l7WZZM81WNIq3EZk7td5hSeTsTQYYEh2XCYgNQZUtleXVrrQbN848Fs8/qm4py521bPnzWkBfYNbtQ3fSsfhW1DW6PqGUv9zvjnsb49JzIk8mJoe9SOvOpTvsr4QuRWh9cJkUT4gbevxoc5eez9BG0NYbUu9MlZT/ym0fpkOt6NsNsF4wqyrRarSfsKAAYSggwYDaod2XbT7XPmWFXXgm8Xej/VME0jxaGizEzRKvQrorJ2PfI8ZGhU30Sh4Lp1dKxLgNejIz5UInGU9znB4ohFe1s7QJPPYNgkQnmoQpcvVecbtHnRhO3d4uL8zMM6v6Pu6ECebU5nhu7tfkO6B53UWRLp91My1ipj2xdk1ey7ZvUiHqGDZ25YtdDaVmB5stci3OE2pHVTW07SDfdaUjkWhhjQoSugGUCDFSggAIy+TFV/W2nRc62lc4t70GV9MDbEN134I/X+MDucrYi9BFuS7hOtbT7qcsR+zdZMvIG6uw97XOx2zVTGOe1meKev6GQn+kAYkztQnvAUtz1ZOhaNiSZo3rx56Shr+BNAgh6ZPO2gRqv4U/GiYmXkIo2YyGPWRR1nsmMJyiYCLA5rQUFGrj3HXKgHQgYtBzRyDh4SiSSX9nLkbainLUo6fgtjQllI5N6M+HoANKhrhkxYbzSqflQahKAHDJZ6yXYuzF7bnS3f2G8Q9vm0YtYDipHXqGTbSvKq91y+diEHHfOmRdklIMD+x21M6wWhlaGcE6OHN0NIyNhRsgE2hdcMjwTP5AVxltGhGteq6G9bWPzX5gsvNB1ZhTvsxXYG3kC5pUDVxJ8jrdN7orXNYwGOmDZ/xeRf9n4hSx72cNkqqSbgnPoaNmuuMCROHgpHF+MUHIDxtJI3CoeA+M74ymMd/pqzlo8o23bYVzLkN8SooVUAbe5nlWrRHoR8fwN/byFpkg/5DMd4IXkodB2Efp5xmcVq+L1GK9+s1sp3o5SiHqIoDWA3NCA0bAAggQOQPQRbZArRf9G+5pJLLlk9C2L/N8nQl5aMiWeS88nbULkGIYWydBLIrEbXjAtIUSk8DPI6O0h6a37BZT0Z6s89OpHLQ3se8Pb6LJJGaED8uHFR/jXdGdJPXeZ0r8+CUg3knHwGlFqYUgNuk5BxG4WMx5wa8PFhIpFeEe4BDPGqhUy/VrS3vdD0q69Wlmi4EWxq9k3n/8j3B5vtzUb1Q+yntD3h++AGwQUPdRPk13e54CByUL6wocGYfIxj4me+WlHhsKB+ugn+WkkpqOgVZEA8V6mM+tTG7MTm7fdMVewFyBh/j9kS+w7CwGZszvgBAQY/CGt/kNuhPp0tNU/JXFNoBpZ3jkIh/qNCIf0t9jcLQ4Ikww3NIsdDvWinmPV6eB7l71RgjwNMIFIrNM0PUYVUPDrHFyOG+HhSVixJ9WRnWl+E7p0cJYuXga0BjXLqyxSRLMbrSVGWOq6rFUIPWB3/WrCgIDdyD0YhXP3aZekdaE3TBy0/aD54fAjdXKZUPxqZNXRnKxsARvi8ABeIy+e1pvn7rentLpukpssi/bDbIvnEbUqp8WiTO6E4BCFK0JS08FxQRfJqkvx95vTtB4qM1++FNvspuRGn4SQsmzsxUD3+fqzXTnIUMKQA1vZBAGgfoc/tPUx17Lls5bgHqE8u/u7h90xEnytHD9yasy7huKG3YSV8fhxTOeknYNC2IKbEXihmP2qYPmTKx1/u2qqjGqZY2oRxlVMK/Y5Jv8GHOmDJnfxrHePe89XKssdaqEcilNBxkOLpbl+zZqmE2rhEhkwnc48pN4VzzlXKZa+A+NpOLHRe0pg3niCRlWhGwcLAdPwe/Bvx8GTydIgIad8E0qdBlXAJihT/CyM8iBwYzyiH8AvvoXRkUEFRFhboYCd6TT2w7AjdBR6lAy+x06q7qk+fWo06JyRuUShoBrJnATvcLEO9E8I5C8rOM4QH2ootz7Wdu2R1121XyA9csVbfWmRZ1m1RPO4CV8+lSen36FP4XkxQM+JQ6uE6mKnasH9RgWXEGNYnM/nHeQ+7LdPIOBM+RsKVGkr3Yp1v9zsnP+mvmFHKbppGe/44tgybxqppF/ocCe8zFXEtQLa9WN/tQPMeocZ+Qx4St10gRUb3NRyNMJT/IFd0N+ucmU0oX+RJuI3F8a6aNJG/YuIaeKfH4b3q/GXx+3xV026kZPCQP3AUvzDUx2k6dd1T4ihGERz+NuUY+6jDrkSvl6TAm9yP2qlWvpYpQnmVJ60O6JSTMVBDgAFjCqC1TQ+g9KeCpfUXzsi0mVYCsv9IrgQQQcZEB0I8OsJ7KeytAka98n+lpfNIL+8wj0qhSQMQxDar9ocoHNzl1qf5iZvnx96I9kcB7IPchhRvd77ho7YLV6xqu+tKHuWjCyJO377MTHmbSXFTjzbxS6820cP3dEK1LcRY2E6zonFfUdZltQBdRvGt5IdGjoDZOutigGV7sF7343jJWzHhEnaXQnnk9qR+k3AiALXsQNX0nwWc8R/C+OBUYj7mqsfZh+QseK9TJSgC8PAyGu/+2u+MW8TWpSQet+kuWmniPRo02v0eXOFr+P5D6lc72if2ROMjb6VSqSwAB27DAv6VTJH+EChH9wPJuwalG6aQrt4xT4P3yJXK1GdVyrRgBw1iMYS5gGHPFPp7SMCFOHxoUQN4XiV6w2CQn0+MC+LrgV2+Qq4Sb0LCl+EpT8RORzvOcEtOXrFIkc7pNdKdhbm5pR9edVXy5t/97iiJLb4c3a74GRKwO+BhPCggZMmQGOyH+nVp7t65OW/0335LLldeftjDkGqg6oFgttmUd/cbxF97KSGsQ/EhqFQ9YFu02LV31+ce/rA90fyeif/DYKbAK92G/f07+H4PNZgGP/WY+2I+6Ytti696QjH2WD+BZ3oZOdiVx0zUHuZtaHMGciCyu3nogC4aap9aMkISWvFicF7ndOvxBngmJvFkPpNg7uB+R/pXAAD1QNQ6wb07CBrPTr1e9rjdbikYTF4r/FlKkQjqLcLnSOorqAUeFt4/RDsK7pWId4dGa9SDCZw2nUFxHxqh5eXm6meSZ5w7tzAHyOI72G91UZhH3EGeSAuD4vsykYcD1w5Gy5p1su1r5xYtq1g57/wdF62af2Teh7qf75mfpe7IUT/Ya0mtd5mTA37ULzHQy4NSkbe/MOs/vZddNL/ud787qpiPOHr7IKPcmm36D7ya30+oH/THe9CXqdkg+3E9RDpPZp5P53s4sHHQVNrC1k7Mpq7rFNIN5fOpzIitFiSDOpRFkduQ86hBCgaM4yQy2cH3rh+xDttDufBT+Bp0wtBMXQYNObvN+CwUU/lSd15wRS1pRt/ZJ0sKCgzHQnfg1eQANJ6lvk3BRtNBODvMZiCqEc/Tw2aewjdU/VaqdcobSHOCjIjOezYqYbGP+x3Y7j1A+9hw9e2h8vdgx0Be51ye7rEYZa/de06prTHf9EhbluY320CVOtKgiPHQPD/X1Jml/D+3La2BlIrIMKhXU7dZ4WzLNlwS6lxxFPiyHYTXpizd91zG9B7q1O7VprMHrdKeerAfAEKMesYLn1fbsC5uWIhcaEF9E7s4hWtybJ+Kkq7nXnyuBbSdD2Ac1JGP2BHQc5DWowP7TWvX5g76RIYMV7JOo/oZ3tMMahIv9h8uDAx3cSejAF+PuHotaOf5U+IJYrb4h9HGjevj5y3MXQGvuB3hXSBcG0VGGC57589HhYkwcJy/zm6zXFdx9YX2rgzjp70mqaMlR3MFtYo58g5Q8+euYltml13+Aipiu3zQivBqwSDXp7R3G0VPQPLYFClAGX5/OfQeOublnN9r13R54QkBj7tQWftB/erS4mNV4I7tux8d/cnMAN9m5vLLLypas2b1rxYvXfDc2ees/MOqVUtWE8MBqNxUeKM/wzsAHAiWUMBbMEiWfogmZtrBPpByVLm5mSsg5L8J4RkPHITrnAiMQJtN/iBwAtLJ1cuWLZ6L8wx4A/pMGM7Pea9EdUw84zxYwsHnmSL0IeAtXRaUh6xFX6XGlfkXeWySAyC3druM2jfbS/IXkarrUQYFwOBAkWkOdB/eR+cKxqtCF0A0M8OeaB8oQj9qOnshaUwc5p3ImFrPLj2/K8/a5UZX9YNm6caGOTkrmyJqsk5m8qPv+ZbMACFzlFS1Wg23oretUypLc0ll6SzB08G8kPgVhSItH0//G0DtaYKn4Rc0/seC0NqmM6nmHGsqLNBMUGkV18IIalHywYRLKajAL4ju8cbEgND6KbqwayLPs2zVssWoxq3A5zBkwHSQMUXWW9Gei4xMo1d0ZuSZbl2PJO3Xmeqf9hnTOgGDM25VWmu3Wf5kU5E9eyPKKY4cZwuQydbFc2+FAe3tQ7NoL5pFAzr39WeqK1vnZJzbBH5g5Hs2ImXQNq/44s4My+4epeaVNoOhZDTrO3xLlujYuQyCutH0bDlyOX81WrSfooapDkBAHwABGFN6AEbVr5Clf4iQ7DG1SraDvAKYCvzCRhl8t9GoXXjkEzx89YQI5uRk2HVG9TOkEBvWcYgsIEQIyJiMqk9vvfX6SGOKySvIuldvUHTyVbpU7g70joyYr7blE7ghIAPGZDKpO5csmXvr/61fPwWC+pm9JuXbfdrkfo9W6O81yfa1Zesf21NaaI6U+KIx0h6iAYq1bcW2n/VmSho91pSAx5zComu6u0sv+rDtwpVUtj3gnfauW5eyd8m8O1qzrA91aU122ieNdnLr2FmJ34KR0oKn+qbCwmx90bzcDLPZsAZ7oSfhFYjWQ16BBaUHDHJRNzwKKnMR5lGrzWBtkptqisggjzEVMSuxaTfbzZciqVqLalnqzj4g4RWsVRIzFp3m0yuvvCjSmGJREXy/UiPsCzIkQvkk3pMR6IAkL8Hh+FkLw7YaNTCmBbc+8cQTk6hSFj1mV/YY5F+6NDJ3v17u67MovmrNtv1y34IFaUfJc1EOauV8W0+e4U2QXJFDQrgH3KJfmdLfWpjzf+HKW9q0ly9fLq5ZXrpiL2SZjyxr/xYshegljMQMkLCJTq96Et6kHUWCXiByDMl38d4grOeA7wQMoFbp3waDBtJhC6YPlsxdBzgaBleCUOwTGCA0KIKh2YCBwJh0avmmxYsLDBHXEgsmxP0qNYyJN6QwnB5ujEaeKSivDIFMDu1rOtHo7Pb166/luXldSPR25uRc06/Slnu0Cjd4eUyPRdvSWpBzaysKCI80BAr32nIybgTlaI9Pia5/hNShALHbqKjedtHZBIpEv6IzcHIzoNVqZxnMuksgvfUYQrpnNRr5l1JpmgdsBk6Dg88PUbhH1bhy5J6Usn9qterbDRZDyfLli7QPPPBAMo5E5KGE2ItloST+xzDMHWR8aDgdElgBTM7njIDEqUQ1CDMjQ6oYpVbxC5VGEvRMEdW7fDNqHMGu7MEm0Qg9eywmzS/nz8/iddH58A0lIh1a7d1ulXyrWynxeZRStl+vrOy2Gu9oXbJEvTGi5xIZV0vpgsKebPN/PLo0H6OGmit0LYDu7dy7YI7u5GYx+q7v9AxQKEMtZFDYp6ZmZjqdegmStudZM4zPkzikSk764EHhlLCcMeqfCJbuB/K2Dwb2OVjh/wQx9VkQW59GWPcSPNv78EZ1MCIXhYdhKlGQ2Eq6EIDbVelNBI1nwgBCOZCYvMKc72l1ymZK1PI6Ejz4EAQgwv1sB8oyFGKPViP/J1XdhtvL8DB2Xp6xx2R6tF+jrPfKkU9SpXj69anb2m26R/ajFTuhfOGapr7v32LrXr7onx6LwhPUdUB3dWVi3VfZ2QNil9/pxRG9+CHPAAT+7ZMyM61ZJovhPpSqvy+RCDdjr7QZnqdCoZI0whgCKlB2NMo0eAWAAdROU87LKAc9BzQhABJgjyX0ArhwA7hw42cPDgrtAmHwICj7Rfsu+k4GRQCD0Aukzwkg4baSkhIJJW1LSgoM8Ij/ghGjwUBQ7DIs8h8UzQwKXvIhIE+ilTYgnLyLEs3hq2bRCLqnpGROn0X7kkeZ3u5Rp7Ae5WyfW5nS0KuXvdYOgz0AwKJtzSJtx7J55/cWZX7mMcj9lJClw6VKqd05f758yLMYfeF3fgZiqEQ8I8uwGGKPf8fiP0AGEArJAlj0LC188iJhpaBgX9owKBBScQ0aFH/QYudL30NgRWSOiAcu6O+8EVLCNdgJUKtK9+i1kmo0TLtt8eKiVCokBGv8BhhlA4yOxhHyaqGWnaHQLwyx47tfr5Z9nqHTFYUz/LzXIU29LN2cTp3kRbdW1NWvAVoHxVVo27ncOnFLn0VV3Z1hKO8zKHe6AHj4UJHrQwIXhNbujkz1M6TJ951fIdEJGNoMEGgwf/4cG6psX4EXaIbRdGv1CrC2lf0wAh4wIBXWIIcuZCC8IYTkk0PgQNi4IttrgskdTLKGEq68R+LPFwr3gh3YCdhgNKADIYzcCUDjXmrMRpA0Vc+iYPFnUml6g0wuYoLjkPDGyBtkhGoRr4suF/cZ1YpnFxcXgz/GDUDaHBDLtpVLMiFf/LxbldToUScxfgXti0iiK4n1KZJYRoHiQBi1T5XmcyvSGlDL9Ep9KTpYDEU4ZGhTHX3Vt30GCBqHcEkhmjs/CR4cNB8K1ixeXLKmdOm8q/QmzRuAx9vAGHeB2Y19kbAbhtELhA1M8KCwf6TgZDgZG9YuDyq6hvdJEQwGHqGDocEDqqj7hTTtHwpZ6p/x83VqtVob2UeX2uFg//VLjGFfMFxEvRMZE3H6eB2IIETOS4DByKXi9Da9Vv4TnGf2ke0566+6WNmRl/Vgn1K0wytP8UBAEiKSyVwAHdJ9OBc08fz9muS6NoP00X1L8jOfOKJdzLd9LUSv7xvOAD3BQypBKWRY4dNR13J4rDwduvDJ1ZInsJ/5/fySop8sXbrwtyjc2wJvgnYxEQzwI/TzDtMcJ6MaOIJJ2GAYKG5TasQXyeUzpgvBug59/pEE0xitWabW6CR/ga5fM7wjE+55G/78IBARZJPLZWLA+OIdBp3qnvz8TE1koSNf13T55aL2eXNv7VUqPvZI0w56FCkBPwzJi/H0aRX97YX2V+uXz88iAOMbTm307dEZODQDFALS3iUbMsukCU5PeuSTxNC9ewThYGdYm3yggRlfahHaN0UQW8PQNt8DivZToT0TjKkD+nrXES/wePNeiv5GWVlG9JWSPY5wcy8BFmGy66HPDjZFo88iNSOlQvKV2az7A+D54muvvXY6hY30GXQNvddfn9RRUHBur1K8wS1JbPZCydaHPaBLLXV1ZBvfalw8pwhw+agv9vtOrVVevGK7YCrbxjeU/jaUZsQQfA1BlIcRcg0YUxiipv0PvA4hdwEADNStAmxv6lpB4Zkw+HelyC9XpLkRtvVK5OnNILI+nyKeeZSq6xELJYaKEQsLM+wWEwxZIdqOwxPp/cI/h3UiYOgMmO3NKGT8R2npwrOpYjd8TvJQpJmHcouSfp3qX155sseLsNGnFQV6jNK9LWB1UBvNsbxYab15HFNVrOMsy/GKW8fMNXJ75NPZqulr/dVTVnN7JWeNmYEfe6CxkOFSKJXS/wPa1x3ubhFqLYMWNVAbUoo/xV7oA/wfJRvBAx3e8Tsd+F0l+hcM688SWep9+Ptt6M5xqVicRPDzCcVbqBhx6cKFVvSV+hmg8HJIfblIoDJszEEl2lDzAPKCQd2JLrNB82GmzXwlJaMjP4fyTB35Oef1qNOdgMsZFPuxMKr2Hp3inu7ga8fsF9dCVbXTrgtUnfUwpOuColGNqQsLCqePV/od8S8EKuOf9TrHRdJlxtS1hAe7fr0gFl3TNUjOPgHD6OXRPcr1kCaDVuayWrUvoMR8EZgR9mMdYIhbdDqpRCwWz8hFqTcZyJFAwfEm5xZw7xaXlGjMRu2P0PrzK75Wiofpw+1xwiL/xJIgxJFXqO2HUZdl5tpWkPRY5Pn3QYClzaz8oUuW1OCTJwXQX6kdXTLuYce4MbGV42X+ioQnIfKzkSprx4rgy6D3HnXyE7itcesgB1YHcZZytipuyVgXWqHwCFsQIQzqXrk8rRKlGi0wKj8ZFKS2/OhG+NzSpSUSTAiVQ1NYe6zjhF7oeAZFSd0Mi2GRXievgOcBIEGoYrBo8EgeH3kuFBh6pQpxDaSU5xwpx0z6Dt1WTX6fXPiJT5rsA1Te5FEn/4AziYeuwjPKHo28wpAzvgBr7xMcByDhdRvW3tgMW3mvVCdIhN7YgxD264dGWT8aArzoqUxQn0w5/Gi6VwRK2O3y6fAs6J6hvEKlFhFkjdomid9mNz67YIFdPMLjjUHJyCyTVnETGON7yFiC+6VgiDewfwux02mfhn3Z12azcT3AlEE1DTuhgtQrS3/WI5xd3ydP3dBpls8bza0zjze/lBfrrxCk+SHLRWKSWINuiAM94f5i/NhUG+b7Pm2PmwtppAoS+eNF/Cpiynlll72CUa8VMFRjIDBCb1C9StWwSKbuzM2130LcvqG+f7ivo3BwBfooZVhMl2vlks9VaC4QJrxG7puCpezBlp/gBnqgTvsmUaWOtS/rRS7roFZyY5ci7Z4OjTi/CW09hzu20fJ67gnBOF8ZvFJ5zLsQkPSQkCrW4Wa2Im7FmBT6IaUin2PKeuiSdUb0wD0IMb9fUE+b0TLx33QclBcygE+HRfuxyaK5bxG0ycP7n6AHs0+iTT+SsCmk7yCXy5NIvqsY3ceHor0XMT4QcPUJ5523WjFnTv73QaTdDPi7nwcYwnA83xo0DD4E1WFDAEm7Gn1yAZyIjnW9pDxUh4YEHBRoNwRD1DH7xe2dfhZ08W6FV+I7uASlj2O6As6EP7JliYpRs3fiFVrgdagbAA95D3K0o8cT5GWhmhnzJlQwB/qEkrg/RC1f5yonFJIq5rHez36G81IXjpNQRzrdK4AMwpxhnmeymtaFFiu/Fwpp7umMZt2VkF3+DXh1T6Pk/VmJLO0vOoPyQVCVLtSZVTlarTiVWsvcDkLqYGMnwyTeIOTF0sDZWwDZ5sfAHN9B3S/CyB2PJIYqcQ/lvUL8vaAuOVqGyt9E0eNiYkWQZHNkcvp0z9nJfh6/9kijkdbHMdYe96lghq9iQh6aSLwCz9Qb1snH2vNBC/Iz1pGwFOt3NvUhO+Y5NgqmkLTXyY5zyO/jDQmCk9TDE10Cb0aT3O8deeCJcCvE+h7G06Ahsg8u727LBV/hf09CHP2uo96HczFf4igXXOPbLMilhtJDHtiZe2GM2WyeTDmgMBeO1IwMmYYsNKX+I6hEdYDEoSmRFqADpFXqUeuGJ/saYSEkj8WPomvhHWj1eSmMEVuhLMOCOXNUYGQoCDVEZ8EsGMGleN0jyBltgudpp75RkR0xIsO7yL8HDYvfR7Hg7HWgOds7OM9P0UL0MqNRTSIwYyrvR4bkrRaYYRhXYO3cgvU32Nq7E+vsSbxmb0gnnwtHRoiKOgPOuA343z1sueC2QdbfLViv1/m3xJ2DLhniEfdgJCFL8rAY6ENY9GUY2H783IRBNEce+FsnNdeNbNcREkD3o7tAD/7XFvl6nKsZRyOeJjv95QkvANZczDUKxiRb+bzzVknRJuYxaOF9jvKKvWil2QOtCB8MK6IMg9pwojRDIe5VqmRtVCKvUMk+0upUb0Hx6BXqCIg6qr8Dgv8QjAkUFYp6kASmHk18l/hIGtFhydoQpSnUrC0ISFDuCdJkKlm6WyFP2w1Y/kkzvOKxmqyduefS8T+ZfVcw3lcdnxdwjvsjlINrEfU0Dqw9rJ/QempFWNeHNXZUTzFqjcSDERXocFEhaAmvPzoH1l4D1nI1vNeznHPc5VxtKoxphPUfeZQOIR48hx0XdBca5P6Hb084yOBP1Pdm4IkBcALdBrrRvrPC75j6B39F0nySVx4LYd5gt3/VqsVS0I2u1ekkq6ElcXlOftY9eflZT+lN6m0wLg/1sw1r4FG1rhKVsjx5FYwJUiIKMiT4Gih/iNjKykMiLtRnl6p7gzVUQdZ6BPsiZDjIfcmIRBsu9RCizirdD4NqMkPYxW7XLlywQD5iIMlIGiM9YH21M0n/+0Hkjz5D9NNGD+3ICGgo6y6imTmAMUGH3xHzKQzpZ/BYRdw+wYzTytYhrWX2S8EsoHPzATv+Bpa9DQchJ4GhXgzcNEud3XEx2wGbP48m1Re4q1VyrnZsc8JoP0KNyujJT+HfWrTwBAJnyMvLvtOaYfgY+ycY1IBc2IDSkRwVvPBWAA4iyzSCrHMytuBBhFkypiBRNlhXFSTRhjwQh+Zn5Il4NSPs0xiEmz3wkhWZVuOvQdK1nkgjfSSN4VSceyMaRvTvVKX7K6euCFTEwUsJnNTQHMcJm/JFGBGtPW942+FxJKzivhSknNE8KAEF7FaBBD2bLgP8+BZ5KTwlhmRQvvKYHqZiwjvQcL6IrUjQ8W1qxgDoMNQFgT1U7NLi4hQouy40GvV3o2r2FXStqYLBeMPGdHj1LYyAL9cIeZSwDnm49oknyAYZ5wMkV559ToYDtSIYIx30OxUcovuhB3SlnTDSJ7FPWlO0KFM01kK7Y811EAhLneT+bLwCecw1Aef4l3wVMR1DeZDTdgNG1IW1+j7rjL2O3ZagbiwXTBoVdVv8hSF3xG4dZ2Oqxr1FvWw4NJE67oXh//6tyh3cbpOdR+5A0xnqIh0rrytEGxa9Vv0LlLc74D06UQKPxS3yk6YDFfbBa4TlwniPNBD6AdIOakWEhVfIgEKilaEQjwwmHN4pZDA+KX4P/Q9FhBwYD258TrnZrL8lJ8cipSYEx8oxjZX5HGycYYTPXZks89XqK0647vgugTFswHlWBVc5o5BArtMa0g11soPdMwTP0SbvhE+IcgHndc7ezO42f2tyTkfMU7xCoTgPe6J9MCbS3IOOg4hQPC8MCeKWvE7EAfy/HIV/UInFviZURcuXxweraf0qjawDQMQujVxcr4J2H5K0HB3h0C5UE8UrJYGjR6gdyTDvA0/wGYvdUPBtNKDB1iP7rnI8U5X40dCMifdMH2OtKoe6tk/r6/iuGU7BXAARnx3WnZ081DG8FMK8rb6qqbmndaCn78MSZErJDVCF7QTNqEqhkPwdqkK/x8+vylWiKmoRYzBp7srIMK4HTL0rEunj90ZA/tCqc19eXtYDWVnmxTCOG+Uy0f6wqmtQWyK4hwqKYYr9Upm4RaVSfKTRqK7Dvo0oTd86b3+s28fump4BEGvbCR/i8Ex8w2ekaNC8bO2Q+iydvjUT/CQqtQiUx90PuLKDYlIeBkevWyAkvawz4QDrHH8AP1MPUS/fvd1JPXAF7Wim9gDHjf6Oc8OdT0rmGsyGFQaD9qXMbNsleXk2CfH5QiwIY2Zhphz9nbLhUV6BMUBrIqhYRHspeCRGpkxvMZhUj8+Zk6OifQ4x0GEwTlJIOqS7x7/WB3ChEwboVKqlD2Rkm3IpyTvc8Y7l13Pl9nH+yriHsPb4zuk86wEIH9Zfd8CRAKR5fCNAsi5q+MyvPbyGCAT+coBe1UnD754+kpNF+x2uepIdAMR7IRyfhxtxbPZXxP+FqRXfwtRKb0Fz6d/g//8LtvcU+PB0YABtfs5um2z8NgEP4bkuLCycgSSsmrpZHDn/VHYBj3QuhC1ryUDIMyGf1KvVyRqUGqkTDQQeVyNhGwIMUBiYq7Ta9P/CPgvGw/dzQlgocuE9VdCleFxrUK1ZDtH+b+M8Hm/t8upL1ePlTFnMG1hbZCwMPE4bkOIvgBA/ztSKbme2Kq9Hbuox5DA/xrprgrH5g2sv1sFun7aY49aNHvoUi96fTNn4q0OusxdPge3wUn/wVwpWuCuny9g65Xj+cE5MZx1xC4Hp/wIueQvfVLpCUM9Uxd/KNo1dYuUJHlSDlloQawINAm7A3qmRWmvKZGmNeqP6OVTF3ma06M6lNp/hUnZiVixZMt9kterfCkmQeQFYNCER/C7YE0cJsIzkg3O0nZtfe45xF2Ad1cAzdcFgtmH9/RaGtIrdgbVXnzuRPBe7c2Y6PNICvO5BGFsVXtvjK0OOyjn+Z+w27ayTaX52yueCT+JumSECBePPMJJdMJJXwLtbx20fLz2yhSc9RSiLzRtVpWAeLugJHDuxd/obW5Og+y49VclQQFa9END1NjAk2kpKCn+bnW3Vw2NRfiqSBItyC30K9kw/AhK4E+z0bnQa3KzVS3+SkaHLIe+Hmzp6nqynfIUd+4T82quYIIHxPEr7JZ9D8AoMZRm/9tCn9sj1xPP6AJL5HYKlMKonQcLehbX3JuuYZBkViB613GQrZxjxJPgN+n3ew22fZGdZHoY97hddqOdLgZqpjP0+6k7+6K9JPIdtMn9nYn1+T4WKWwIl9AbNf84575y5g1Xb0t8gm1wIhO5VoIGfwQD/kplpPqdocUYqVf2eaJ6/zf/fu1cywV85fR5CuEcYZ/y93hqBZSgpFioc5KoTtL7y+NtQZ/cn1jGhmLzXGZ8rHudHuQW7TaBmD/ANd4fMtqWnAbEofGSA22ZnUBLujF/QaRwAeSccJvSEWrZg+QJC3wYLCYlIm4SQEOL/MpBezTIq6xgVYclpnKvBPorfOuycqeObPW+blDoc0RQefaZ1W4l1Wzk5aTjvHdHL5g0qdJzMB9GFkBF+l8K88DyR5yH60Qk0IMjIwuXv36jc/WTuz2h9T7DhAL9uaP2c1Lx8k3U7WuclOq7oDERnIDoD0RmIzkB0BqIzEJ2B6AyczAzwsXFwb3ZSsfXJfOZ3+T18iU7lwskcNwpQsu/yjTjV1x5itZ/F57J2TJk9FPj0VI/hu3Q+ml/WOTOdrZEuZneoZdEH2Lfo7rPvlqLcOaU44Jz4AFs9Yyllxb9FlzfqLoWkDZDqKPZXTXmU3Za6iOOi3TRG3U062QGRN2IcCT9mHHEO6E7/kkWV5smeK/q+E88A5W+YqoTbwH37iKlM+CHN/4nfFX3FqJ8BnqGxU6LzOyc+5S+P7WAc42s9taKV3IYN30kKzkjfMArpfFXpuUxF3EfgyUFUJ/51X0VK5oYNo4hMOtKT8G09P7dRMoGtmbocXunjYM1/bG+getZvEYpM+bZe85m8LkqgMtUp32cq4luCZRAxDsYRe8EYkW07k1M3+j+b3WqTBCqTUOsS30q1LDAoP8qW/4nalsTRP/qxN0L2QGFioGryc1QvhDnmmC0k+Rb3CPZQqaNCY2HsTenoGDGPKlVPyww4419D3VQ/3VxSTwqUxdT4vpwwZ1QwhUfHVJ2SUXAb18f7d2YuCFRMrIQx8bp1pAfCVIz/nK2eDSXVKEx+Sib6VJ6E52JBTYaXuK079sHL4EI1CczgrbwEGcqVQ8o0Pajw/SW7dYLkeO+n/4G2P+WMyj+dyok7yXPRfPNy2CeYb3elWBaoFf4JDy4XzXO46hWFew3QRPwRWzEx7bjzzctqJ08elaXkJzl3o/ptfM5oR+pstmbaIpRv3IF6qPtx037FVR59oHblUSyCjajs7Q/f3JDwZSDgjP2arYx5Bv//9WDv5f9WJbiPqRx3iXuH+DudK8ECT4JG9yrM4w8DTsEDg861Q/DrgCPuL5ivRiobD2sxkN4CfodUQYwDkcEfjjXXeNg9gHqkH/qd089mq9KF0ajhNJghb0zQm/A7J89F3f/9/orYz4EadYdr+4ciqHGs14TkmwNkfGg6sAua6K9AuuwC9mtt6nc58UhdJVhn3CIU1f0GgMJmzDXNdyDyAXWy807n4Ht3lcc6oQP+GFs5dTlbKU+KGtNpMKbwR1Do1b9zYrofSB2eZtjwxpFWNOlID1nV82gd9Bg3DHMXKoafh9e71FspMFI4eRov66iP4ilQ0CTk1p3Zalq+31a5QIyiutVIMzyL+d6B8K2fVFRPRpqYD7dJB6QitpWpPOsNpmr2BSwvcQANxSH09j2T9+Rb+dlBmpBkgmeHUcs4JlwK1OhllC83D0eiOSKuh0xz3GeMc/LNrGOKnvYIZ5p2RDkybscsLRbcxew2IQz7zDIJ+PlGASe7M0XHbJ1+JfZB/4ZXoc58Q1LwHZAmhgEiPO+E93+LqZp4K7tVZ+Nqi6mNS5Q3eaYtlV90bwGQqNKYAtUpv0JD6q/x5DuqC8JgoUgwtIvrZCqnveGuTF18sFw+fbSEGOgQPjVQPu5+6BpsD1SP/xW7OzlpNDy1+SrV2sQpvprEfH/F1KeYsjhS/BmSQWHvhPmObWAqBT+FF1LQebhoQvdMm9DRn09PNr6UeetZ30P83TYUdU+2ItYTqEp6jq3LV4wWIwpfmbdGasFC3QTZKh887iYf5HxH08LjUw87LRDHOeuhQHksaSIeXxKboHLn5N5AXdYDLUiaRz3R6LOhw0ZUjlCI3TbzNmyY23hPdIIbjEXgDVTNfs69vVg6mi6NfzBUTzgXG/M9wWRzTAvx3UjaajSNs682KyVQPfPX8DbU82gIxjShz7tN/xDbdPF3RjxnNN2vYY2F27Nc7HNMex7hhCcCnmUBy0JdVuAhRVnq0hG+8RQOMs5xZe7K9HkcWpUM68NG8MVsrXAmcmGPYZPeSw+EELz8kqtmxjH70o7gcAY9Nc97hBAO0gxvQj2V15fnofCgmi8JQlKLIZr3Q1C5E/NdNfU9dmuJYTSErKd7zsbM5xHVH5Jhi/2O2C9ImjmUoPViIRIosRnfX8PxARCovThcdJPJsLDBr/c5pt/JVZtIg+6MfwVLGBKpTUoVHgr8XoT3To74HczWaeeOliQy8RvZykmXwGtWhuabNLw9+LmehPHxIHgdKr9fAKToCO+pQs2ad/grE9aMppD1jN/00TYArrF4NlOd9FM0YCOSJfHwPDgcWJCPsGVQ+NwiMPrQGQ4GdDsv04x8CUG7RDUCGvgau1VhGMlrIpib/SeaG0PejNgZxzpY52RDoHLcbzEunk/IP/HJoKCXjb3g4+yWcQTZH/v9OD+xFYi5MJLX49oqlQScE36Hh1EbGQmAEhfEHcuRfP2xv0ow31smMAFGP9vnnPacv2JcA17DhDwXAJ/Y7xMSO5Lji577JGeA9KKBfmUyjklv4knowoa9l6lAm8bKiTewO8bLQFGZwGuiUzn1JsFM3NRSJGWfx5MTfXRJxD3mS7YanbhHcAHCmBJg1MsgGP97LKznYCAvYBwvHnU4BG/iAbCXnvYDCCRRodDqFMZFTbffPsb7XgBD4TlvWdyf2MrY80eyJzCBNWzNrBKmIuEDGH0v9p6tmMs3meq4db2fC5L4vBRB6Y2pk7zVMjNTNf0u1JR9itd24Br68VB7Hg2aCfSJwuEnueZH7G18qUXVxLVMWeynMKYv/M5Jf2JrU0rZeuHMwW4YL5VbNdnEVibcgTDl30hAVrBV8T/m9swYsV6vPPpVm6BHxe/PsfA+BtOiCd7xpPuxRlJ2iFiKhwLqtWK/9Dsm/ZaEGUcyHKRktq9i/HX4vM347I3+iok/A3shZzBvw4MptAesSkPL1ikPYa4/8W+J+ZRxIn+GZmMjtiiiJz65GWAdykRomN/EOePuIx1zFiEIW1d6XJlmPuzaNG0mZJ2z8NT8XqBq4oPeLyabRxIip3P31SamsM74AizC2xEafe5DeMQnPtFmhz8IhRziQe/zbwGToExQg6f9eni9ea6aNNFIgim8cVRNFDKVE+4AwniXzxFfzFZPTj7RZ/J7QfDuMM5CX3nsDxFa/xTUMHHUO53cmh+xd1E4wW1PlrJfJCVzTwRDjKF+GIV2neju7nGkq3pglMN571A/I/J1fPhDTOzPBFN9WwT5CDH/gPBnDzzVobBuCMZE7VPw/v0QoH8GfYEXomHCDApjR3r8dC08+EAPrC+n0v5vyPM9cO219BBLVCAvOO1k5jD6nlE+A2cCquXh5WpjMlM7+5qAY+Im5Gv6h+KVUDHsZZzjy1nnuGtIZ3sDvOwon97o8KIzMPIzQCL8CEmnsbXpMKgJe4ZkTBXjmpnqtJ+w2+ajt9DQvfDIX030E6IzcIZngGvRT2Gc029DLunAiVgbwZ6sYERUTvkJt2905MbO8PRFPz46A8EZ4PcR1Ulyf3nC30j0JQKlC1BrSUDiVFpCvYD5BG4oV9MH5Z9XveiNNaraSEZvanQGzuQMcFxxPOuYXQz2upMN1QfxUHeZAInOmA8DlYIXkHd6B2ULxNMjOhQZFP4fu52pnnwulXqfyfFHPzs6A6NmBjin5CwUyP0IhtMaotu4IU1WxVbGr/eXjZ/LbhWo0OUu11cR+32+yTH6sfKMg3JUvDqhmroLUDgg91FzQdGBRGfgTMwAH+I5x0uRwHwTOadeHDvR0vRpf+XEc0iAZIBJQFD6NnRZdAiKAYWDwiOohlF1g8rzgW9LfNZIMjfOxLxEPzM6A8OeAaIY8Q2Ltwg+44mhZYLLkC+S86Xqg6B0+Fs8VztBDKrU+Qj5XkZu6kPA5OdGmQTDnvroG75tMwDjGMezIRzjLiUCK18ufwKom/dmJHVWJdB4HHFr2a3xc6LGdOZXxv8DIg2pCHVkAJQAAAAASUVORK5CYII=";
+
+        function escapeXml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        function parseDateParts(dateStr) {
+            if (!dateStr) return { day: '____', month: '____', year: '2026' };
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return { day: '____', month: '____', year: '2026' };
+            return { year: parts[0], month: parts[1], day: parts[2] };
+        }
+
+        function buildDocxParagraph(text, opts = {}) {
+            const align = opts.align ? `<w:jc w:val="${opts.align}"/>` : '';
+            const spacingBefore = opts.before !== undefined ? opts.before : 0;
+            const spacingAfter = opts.after !== undefined ? opts.after : 40;
+            const line = opts.line !== undefined ? opts.line : 240;
+            const bold = opts.bold ? '<w:b/><w:bCs/>' : '';
+            const italic = opts.italic ? '<w:i/><w:iCs/>' : '';
+            const underline = opts.underline ? '<w:u w:val="single"/>' : '';
+            const sz = (opts.size || 11) * 2;
+            const font = opts.font || 'Times New Roman';
+
+            const runs = Array.isArray(text) ? text : [{ text, bold: opts.bold, italic: opts.italic, underline: opts.underline }];
+            const runsXml = runs.map(r => {
+                const rBold = r.bold ? '<w:b/><w:bCs/>' : '';
+                const rItalic = r.italic ? '<w:i/><w:iCs/>' : '';
+                const rUnder = r.underline ? '<w:u w:val="single"/>' : '';
+                const rSz = (r.size || opts.size || 11) * 2;
+                return `<w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}" w:cs="${font}"/>${rBold}${rItalic}${rUnder}<w:sz w:val="${rSz}"/><w:szCs w:val="${rSz}"/></w:rPr><w:t xml:space="preserve">${escapeXml(r.text)}</w:t></w:r>`;
+            }).join('');
+
+            return `<w:p><w:pPr>${align}<w:spacing w:before="${spacingBefore}" w:after="${spacingAfter}" w:line="${line}" w:lineRule="auto"/></w:pPr>${runsXml}</w:p>`;
+        }
+
+        function buildLogoParagraphXml() {
+            // 70x60 pt approx -> 889000 x 762000 EMUs
+            return `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="20" w:after="40"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="820000" cy="700000"/><wp:docPr id="1" name="Logo"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="1" name="logo.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId1" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="820000" cy="700000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+        }
+
+        function buildReferralBodyXml(student, org, lang) {
+            const fio = [student.surname, student.name, student.patronymic].filter(Boolean).join(' ').trim() || '________________________________________';
+            const orgName = org ? org.name : '________________________________________';
+            const specObj = SPECIALIZATIONS.find(x => x.id === student.spec);
+            const specLabel = specObj ? `${specObj[lang]} (${specObj.code})` : '';
+            const practiceTitle = student.department
+                ? `${orgName} (${student.department})`
+                : orgName;
+
+            const start = parseDateParts(student.departDate);
+            const end = parseDateParts(student.returnDate);
+            const plan = parseDateParts(student.planDate || getPlanDateForCourse(student.course));
+
+            if (lang === 'kk') {
+                return [
+                    buildDocxParagraph('«ЕУРОПАЛЫҚ ЦИФРЛЫҚ ТЕХНОЛОГИЯЛАР ЖӘНЕ КӘСІПКЕРЛІК ЖОҒАРЫ КОЛЛЕДЖІ» ЖММ', { align: 'center', bold: true, size: 11, after: 20 }),
+                    buildLogoParagraphXml(),
+                    buildDocxParagraph('«Техникалық және кәсіптік, орта білімнен кейінгі білім беру ұйымдары үшін кәсіптік практиканы ұйымдастыру мен өткізу қағидаларын және практика базалары ретінде кәсіпорындарды (ұйымдарды) айқындау қағидаларына 1-қосымша', { align: 'right', italic: true, size: 9.5, after: 80 }),
+                    buildDocxParagraph('КӘСІПТІК ПРАКТИКАҒА ЖОЛДАМА', { align: 'center', bold: true, size: 12, before: 40, after: 80 }),
+                    buildDocxParagraph([
+                        { text: 'Кәсіпорында (ұйымда) қалады ' },
+                        { text: 'жұмыс оқу жоспарына сәйкес', underline: true }
+                    ], { size: 11, after: 0 }),
+                    buildDocxParagraph('(негіздеме)', { align: 'center', size: 8.5, after: 40 }),
+                    buildDocxParagraph([
+                        { text: `${plan.year} ж. «${plan.day}» ${plan.month}`, underline: true }
+                    ], { size: 11, after: 60 }),
+                    buildDocxParagraph([
+                        { text: 'Білім алушы   ' },
+                        { text: `  ${fio}  `, bold: true, underline: true }
+                    ], { size: 11, after: 0 }),
+                    buildDocxParagraph('(тегі, аты, әкесінің аты (ол бар болған жағдайда))', { align: 'center', size: 8.5, after: 40 }),
+                    buildDocxParagraph([
+                        { text: `  ${practiceTitle}  `, bold: true, underline: true }
+                    ], { align: 'center', size: 11, after: 0 }),
+                    buildDocxParagraph('(кәсіпорынның (ұйымның) атауы)', { align: 'center', size: 8.5, after: 40 }),
+                    buildDocxParagraph([
+                        { text: specLabel ? `${specLabel} мамандығы бойынша кәсіптік практикадан өту үшін жіберіледі` : 'кәсіптік практикадан өту үшін жіберіледі' }
+                    ], { size: 11, after: 60 }),
+                    buildDocxParagraph([
+                        { text: 'Практиканың басталу мерзімі: ' },
+                        { text: `${start.year} ж. «${start.day}» ${start.month}`, bold: true, underline: true }
+                    ], { size: 11, after: 40 }),
+                    buildDocxParagraph([
+                        { text: 'Практиканың аяқталу мерзімі: ' },
+                        { text: `${end.year} ж. «${end.day}» ${end.month}`, bold: true, underline: true }
+                    ], { size: 11, after: 80 }),
+                    buildDocxParagraph([
+                        { text: 'Білім беру ұйымының басшысы   ___________________   ' },
+                        { text: 'Б.С.Джармагамбетова', bold: true }
+                    ], { align: 'right', size: 11, after: 20 }),
+                    buildDocxParagraph('М.О. (Мөр орны)', { align: 'left', size: 9.5, after: 60 }),
+                    buildDocxParagraph('--------------------------------------------------------------------------------------------------------------------------', { align: 'center', size: 10, after: 40 }),
+                    buildDocxParagraph('Оқу орнына қайтарылады', { align: 'left', italic: true, size: 9.5, after: 20 }),
+                    buildDocxParagraph('Келуі мен кетуі туралы белгі', { align: 'center', bold: true, size: 11.5, after: 60 }),
+                    buildDocxParagraph([
+                        { text: 'Білім алушы   ' },
+                        { text: `  ${fio}  `, bold: true, underline: true }
+                    ], { size: 11, after: 0 }),
+                    buildDocxParagraph('(тегі, аты, әкесінің аты (ол бар болған жағдайда))', { align: 'center', size: 8.5, after: 40 }),
+                    buildDocxParagraph([
+                        { text: 'кәсіптік практикадан өту үшін   ' },
+                        { text: `  ${practiceTitle}  `, bold: true, underline: true }
+                    ], { size: 11, after: 0 }),
+                    buildDocxParagraph('(кәсіптік практиканың атауы / кәсіпорын)', { align: 'center', size: 8.5, after: 80 }),
+                    buildDocxParagraph('Келді ___________________________                    Кетті ___________________________', { align: 'center', size: 11, after: 40 }),
+                    buildDocxParagraph('20____ж. «____» _________________                    20____ж. «____» _________________', { align: 'center', size: 11, after: 60 }),
+                    buildDocxParagraph('Мөр, қолы ______________________                    Мөр, қолы ______________________', { align: 'center', size: 11, after: 0 }),
+                    buildDocxParagraph('(болған кезде)                                                       (болған кезде)', { align: 'center', size: 8.5, after: 20 })
+                ].join('');
+            }
+
+            // Russian template
+            return [
+                buildDocxParagraph('ЧУ «Европейский высший колледж цифровых технологий и предпринимательства»', { align: 'center', bold: true, size: 11, after: 20 }),
+                buildLogoParagraphXml(),
+                buildDocxParagraph('Приложение 1 к Правилам организации и проведения профессиональной практики и правилам определения предприятий (организаций) в качестве баз практики для организаций технического и профессионального, послесреднего образования', { align: 'right', italic: true, size: 9.5, after: 80 }),
+                buildDocxParagraph('НАПРАВЛЕНИЕ НА ПРОФЕССИОНАЛЬНУЮ ПРАКТИКУ', { align: 'center', bold: true, size: 12, before: 40, after: 80 }),
+                buildDocxParagraph([
+                    { text: 'Остается на предприятии (организации) ' },
+                    { text: 'согласно рабочего учебного плана', underline: true },
+                    { text: ` (основание) от «${plan.day}» ${plan.month}.${plan.year} г. обучающийся` }
+                ], { size: 11, after: 40 }),
+                buildDocxParagraph([
+                    { text: `   ${fio}   `, bold: true, underline: true }
+                ], { align: 'center', size: 11.5, after: 0 }),
+                buildDocxParagraph('фамилия, имя, отчество (при его наличии)', { align: 'center', size: 8.5, after: 40 }),
+                buildDocxParagraph([
+                    { text: 'направляется для прохождения профессиональной практики в ' },
+                    { text: `  ${practiceTitle}  `, bold: true, underline: true }
+                ], { size: 11, after: 20 }),
+                specLabel ? buildDocxParagraph([
+                    { text: 'по квалификации / специальности: ' },
+                    { text: specLabel, italic: true }
+                ], { size: 10.5, after: 40 }) : '',
+                buildDocxParagraph([
+                    { text: 'Срок начала профессиональной практики: ' },
+                    { text: `«${start.day}» ${start.month}.${start.year} г.`, bold: true, underline: true }
+                ], { size: 11, after: 40 }),
+                buildDocxParagraph([
+                    { text: 'Срок завершения профессиональной практики: ' },
+                    { text: `«${end.day}» ${end.month}.${end.year} г.`, bold: true, underline: true }
+                ], { size: 11, after: 80 }),
+                buildDocxParagraph('Руководитель организации образования:', { size: 11, after: 20 }),
+                buildDocxParagraph([
+                    { text: 'Б.С.Джармагамбетова   _______________________', bold: true }
+                ], { size: 11, after: 0 }),
+                buildDocxParagraph('                                                     (подпись)', { size: 8.5, after: 40 }),
+                buildDocxParagraph('Место печати', { size: 9.5, after: 60 }),
+                buildDocxParagraph('--------------------------------------------------------------------------------------------------------------------------', { align: 'center', size: 10, after: 40 }),
+                buildDocxParagraph('Возвращается в учебное заведение', { italic: true, size: 9.5, after: 20 }),
+                buildDocxParagraph('Отметка о прибытии и выбытии', { align: 'center', bold: true, size: 11.5, after: 60 }),
+                buildDocxParagraph([
+                    { text: 'Обучающийся   ' },
+                    { text: `   ${fio}   `, bold: true, underline: true }
+                ], { size: 11, after: 0 }),
+                buildDocxParagraph('фамилия, имя, отчество (при его наличии)', { align: 'center', size: 8.5, after: 40 }),
+                buildDocxParagraph([
+                    { text: 'для прохождения профессиональной практики   ' },
+                    { text: `  ${practiceTitle}  `, bold: true, underline: true }
+                ], { size: 11, after: 0 }),
+                buildDocxParagraph('(наименование профессиональной практики / организации)', { align: 'center', size: 8.5, after: 80 }),
+                buildDocxParagraph('Прибыл в ________________________                    Выбыл из ________________________', { align: 'center', size: 11, after: 40 }),
+                buildDocxParagraph('«____» _________________ 20____ г.                    «____» _________________ 20____ г.', { align: 'center', size: 11, after: 60 }),
+                buildDocxParagraph('Печать, ______________ подпись                    Печать, ______________ подпись', { align: 'center', size: 11, after: 0 }),
+                buildDocxParagraph('(при наличии)                                                       (при наличии)', { align: 'center', size: 8.5, after: 20 })
+            ].join('');
+        }
+
+        async function generateStudentReferralDocx(student, langMode = 'ru', saveToGroupCell = true) {
+            if (saveToGroupCell) {
+                recordReferralInGroupCell(student, langMode);
+            }
+            if (typeof JSZip === 'undefined') {
+                alert('Библиотека JSZip не загружена. Проверьте подключение к интернету.');
+                return;
+            }
+            const org = getOrg(student.orgId);
+            const zip = new JSZip();
+
+            const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="png" ContentType="image/png"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+
+            const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+
+            const docRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.png"/>
+</Relationships>`;
+
+            let innerBody = '';
+            if (langMode === 'both') {
+                const pageBreak = '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+                innerBody = buildReferralBodyXml(student, org, 'ru') + pageBreak + buildReferralBodyXml(student, org, 'kk');
+            } else {
+                innerBody = buildReferralBodyXml(student, org, langMode);
+            }
+
+            const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:body>
+    ${innerBody}
+    <w:sectPr>
+      <w:pgSz w:w="11906" w:h="16838"/>
+      <w:pgMar w:top="720" w:right="850" w:bottom="720" w:left="990" w:header="450" w:footer="450" w:gutter="0"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`;
+
+            zip.file('[Content_Types].xml', contentTypes);
+            zip.folder('_rels').file('.rels', rootRels);
+            const wordFolder = zip.folder('word');
+            wordFolder.file('document.xml', documentXml);
+            wordFolder.folder('_rels').file('document.xml.rels', docRels);
+            wordFolder.folder('media').file('logo.png', COLLEGE_LOGO_BASE64, { base64: true });
+
+            const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const safeSurname = (student.surname || 'Студент').replace(/[^a-zA-Zа-яА-ЯәіңғүұқөһӘІҢҒҮҰҚӨҺ0-9_-]/g, '_');
+            const safeGroup = (student.group || '').trim().replace(/[^a-zA-Zа-яА-ЯәіңғүұқөһӘІҢҒҮҰҚӨҺ0-9_-]/g, '_');
+            const langTag = langMode === 'kk' ? 'КАЗ' : (langMode === 'both' ? 'РУС_КАЗ' : 'РУС');
+            a.href = url;
+            a.download = `Направление_${safeGroup ? safeGroup + '_' : ''}${safeSurname}_${langTag}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        function downloadReferralById(studentId, langMode) {
+            const s = students.find(x => x.id === studentId);
+            if (!s) return;
+            generateStudentReferralDocx(s, langMode);
+        }
+
+        function getCurrentModalStudentData() {
+            const courseVal = document.getElementById('s-course').value;
+            return {
+                id: editingStudentId || null,
+                surname: document.getElementById('s-surname').value.trim(),
+                name: document.getElementById('s-name').value.trim(),
+                patronymic: document.getElementById('s-patronymic').value.trim(),
+                course: courseVal,
+                group: document.getElementById('s-group').value.trim(),
+                planDate: document.getElementById('s-plan-date').value || getPlanDateForCourse(courseVal),
+                spec: document.getElementById('s-spec').value,
+                orgId: document.getElementById('s-org').value ? Number(document.getElementById('s-org').value) : null,
+                department: document.getElementById('s-department').value.trim(),
+                departDate: document.getElementById('s-depart-date').value,
+                departTime: document.getElementById('s-depart-time').value,
+                returnDate: document.getElementById('s-return-date').value,
+                returnTime: document.getElementById('s-return-time').value
+            };
+        }
+
+        // Events
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentLang = btn.dataset.lang;
+                updateLangUI();
+            };
+        });
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.onclick = () => switchTab(tab.dataset.tab);
+        });
+
+        document.getElementById('filter-course').onchange = renderStudents;
+        document.getElementById('filter-spec').onchange = renderStudents;
+        document.getElementById('filter-org').onchange = renderStudents;
+        let searchTimeout;
+        document.getElementById('search').oninput = () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(renderStudents, 200);
+        };
+        document.getElementById('filter-group').onchange = renderStudents;
+        document.getElementById('ref-filter-group').onchange = renderReferralsByGroup;
+        document.getElementById('ref-search').oninput = () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(renderReferralsByGroup, 200);
+        };
+        document.getElementById('btn-save-plans').onclick = savePlanDatesFromUI;
+        document.getElementById('s-course').onchange = () => {
+            const c = document.getElementById('s-course').value;
+            document.getElementById('s-plan-date').value = getPlanDateForCourse(c);
+        };
+        document.getElementById('org-search').oninput = () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(renderOrgs, 200);
+        };
+
+        document.getElementById('add-btn').onclick = () => {
+            if (currentTab === 'students') openStudentModal(false);
+            else openOrgModal(false);
+        };
+
+        document.getElementById('export-btn').onclick = exportExcel;
+        document.getElementById('btn-download-modal-ref').onclick = () => {
+            const st = getCurrentModalStudentData();
+            if (!st.surname || !st.name) {
+                alert(currentLang === 'ru' ? 'Сначала укажите фамилию и имя студента' : 'Алдымен студенттің тегі мен атын енгізіңіз');
+                return;
+            }
+            const langMode = document.getElementById('s-ref-lang').value;
+            generateStudentReferralDocx(st, langMode);
+        };
+        document.getElementById('save-student').onclick = saveStudent;
+        document.getElementById('save-org').onclick = saveOrg;
+
+        document.getElementById('btn-open-2gis-city').onclick = () => {
+            window.open('https://2gis.kz/aktobe', '_blank');
+        };
+        document.getElementById('btn-open-court').onclick = () => {
+            if (courtMarker && mapInstance) {
+                mapInstance.setView([50.2948, 57.1553], 17);
+                courtMarker.openPopup();
+            }
+            window.open('https://2gis.kz/aktobe/firm/70000001031889701', '_blank');
+        };
+
+        document.querySelectorAll('[data-close]').forEach(btn => {
+            btn.onclick = () => closeModal(btn.dataset.close);
+        });
+
+        document.querySelectorAll('.modal').forEach(m => {
+            m.onclick = (e) => { if (e.target === m) closeModal(m.id); };
+        });
+
+        // Init
+        loadData();
+        updateLangUI();
+        switchTab('students');
+    </script>
+</body>
+</html>
 
