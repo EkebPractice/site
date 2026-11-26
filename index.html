@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Практика EKEB / EKEB Тәжірибе</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #0a0e1a;
+            --card: #12182a;
+            --accent: #00e5ff;
+            --accent2: #00b8d4;
+            --text: #e0e6f0;
+            --text-dim: #8b95a8;
+            --border: #1e2a44;
+            --success: #00c853;
+            --warning: #ffab00;
+            --danger: #ff5252;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', 'Noto Sans', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding-bottom: 90px;
+        }
+        .header {
+            background: linear-gradient(135deg, #0d1428, #1a2340);
+            padding: 16px 20px 12px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .logo {
+            font-weight: 700;
+            font-size: 18px;
+            background: linear-gradient(90deg, var(--accent), #64b5f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .lang-switch {
+            display: flex;
+            background: var(--card);
+            border-radius: 20px;
+            padding: 4px;
+            border: 1px solid var(--border);
+        }
+        .lang-btn {
+            padding: 6px 14px;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .lang-btn.active { background: var(--accent); color: #000; }
+        h1 { font-size: 19px; font-weight: 700; }
+        .subtitle { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+        .tabs {
+            display: flex;
+            margin-top: 12px;
+            background: var(--card);
+            border-radius: 12px;
+            padding: 4px;
+            border: 1px solid var(--border);
+        }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-dim);
+        }
+        .tab.active { background: var(--accent); color: #000; }
+        .filters, .org-filters {
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .filter-row { display: flex; gap: 8px; }
+        select, input, textarea {
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            flex: 1;
+            outline: none;
+            font-family: inherit;
+        }
+        select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+        .stats {
+            display: flex;
+            gap: 8px;
+            padding: 0 16px 10px;
+        }
+        .stat {
+            flex: 1;
+            background: var(--card);
+            padding: 10px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        .stat-num { font-size: 18px; font-weight: 700; color: var(--accent); }
+        .stat-label { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+        .list { padding: 0 12px; display: flex; flex-direction: column; gap: 10px; }
+        .card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 14px;
+            border: 1px solid var(--border);
+        }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .student-name { font-size: 15px; font-weight: 600; }
+        .course-badge {
+            background: rgba(0, 229, 255, 0.15);
+            color: var(--accent);
+            padding: 3px 8px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .specialization { font-size: 12px; color: var(--accent2); margin-bottom: 6px; }
+        .practice-place {
+            font-size: 13px;
+            margin-bottom: 8px;
+            padding: 7px 10px;
+            background: rgba(0, 200, 83, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid var(--success);
+        }
+        .dates { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px; }
+        .date-item { background: rgba(255,255,255,0.03); padding: 6px 8px; border-radius: 8px; }
+        .date-label { color: var(--text-dim); font-size: 10px; }
+        .group-header {
+            padding: 10px 16px 2px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .empty { text-align: center; padding: 40px 20px; color: var(--text-dim); }
+        .fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,229,255,0.4);
+            z-index: 100;
+        }
+        .export-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            padding: 12px 18px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            z-index: 100;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 200;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: #0f1525;
+            width: 100%;
+            max-width: 520px;
+            border-radius: 20px 20px 0 0;
+            padding: 18px 16px 30px;
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .close-btn { background: none; border: none; color: var(--text); font-size: 26px; cursor: pointer; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; }
+        .btn { width: 100%; padding: 13px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 6px; }
+        .btn-primary { background: var(--accent); color: #000; }
+        .btn-secondary { background: var(--border); color: var(--text); }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .org-card .org-type { font-size: 11px; color: var(--warning); font-weight: 600; }
+        .org-actions { display: flex; gap: 8px; margin-top: 10px; }
+        .small-btn { padding: 6px 10px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; }
+        .section-title { font-size: 13px; font-weight: 600; color: var(--accent); margin: 8px 0 4px; }
+
+        .referral-bar {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px dashed var(--border);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .ref-btn {
+            padding: 6px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 229, 255, 0.35);
+            background: rgba(0, 229, 255, 0.08);
+            color: var(--accent);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: background 0.15s;
+        }
+        .ref-btn:hover { background: rgba(0, 229, 255, 0.2); }
+        .ref-btn.kk {
+            border-color: rgba(0, 200, 83, 0.4);
+            background: rgba(0, 200, 83, 0.1);
+            color: var(--success);
+        }
+        .ref-btn.kk:hover { background: rgba(0, 200, 83, 0.22); }
+        .modal-referral-box {
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(0, 229, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        .modal-referral-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+        .modal-referral-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .group-folder-card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 14px;
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+        }
+        .group-folder-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            gap: 8px;
+        }
+        .group-folder-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .group-folder-badge {
+            background: rgba(0, 200, 83, 0.15);
+            color: var(--success);
+            padding: 3px 9px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .group-folder-body {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px dashed var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .saved-ref-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .plan-config-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px;
+            margin: 0 12px 14px;
+        }
+        .plan-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .plan-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px;
+        }
+        .plan-item label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent2);
+            margin-bottom: 6px;
+        }
+        .plan-item input {
+            width: 100%;
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+    <div class="header">
+        <div class="header-top">
+            <div class="logo">EKEB</div>
+            <div class="lang-switch">
+                <button class="lang-btn active" data-lang="ru">RU</button>
+                <button class="lang-btn" data-lang="kk">KK</button>
+            </div>
+        </div>
+        <h1 id="app-title">Практика студентов</h1>
+        <div class="subtitle" id="app-subtitle">Студенты и организации</div>
+        <div class="tabs">
+            <div class="tab active" data-tab="students" id="tab-students">Студенты</div>
+            <div class="tab" data-tab="referrals" id="tab-referrals">Направления</div>
+            <div class="tab" data-tab="orgs" id="tab-orgs">Организации</div>
+            <div class="tab" data-tab="map" id="tab-map">Карта 2GIS</div>
+        </div>
+    </div>
+
+    <!-- STUDENTS VIEW -->
+    <div id="view-students">
+        <div class="filters">
+            <div class="filter-row">
+                <select id="filter-course">
+                    <option value="all">Все курсы</option>
+                    <option value="2">2 курс</option>
+                    <option value="3">3 курс</option>
+                </select>
+                <select id="filter-spec">
+                    <option value="all">Все направления</option>
+                </select>
+            </div>
+            <select id="filter-org">
+                <option value="all">Все организации</option>
+            </select>
+            <div class="filter-row">
+                <input type="text" id="search" placeholder="Поиск по ФИО...">
+                <select id="filter-group"><option value="all">Все группы</option></select>
+            </div>
+        </div>
+        <div class="stats">
+            <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label" id="lbl-total">Всего</div></div>
+            <div class="stat"><div class="stat-num" id="stat-filtered">0</div><div class="stat-label" id="lbl-shown">Показано</div></div>
+            <div class="stat"><div class="stat-num" id="stat-groups">0</div><div class="stat-label" id="lbl-groups">Групп</div></div>
+        </div>
+        <div id="student-list" class="list"></div>
+    </div>
+
+    <!-- REFERRALS BY GROUP VIEW -->
+    <div id="view-referrals" style="display:none;">
+        <div class="plan-config-box">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                <div style="font-size:13px;font-weight:700;color:var(--accent);" id="plan-box-title">📅 Согласование рабочего учебного плана по курсам (дата в направлении)</div>
+                <button type="button" class="small-btn" id="btn-save-plans" style="background:var(--accent);color:#000;border:none;font-weight:600;">Сохранить даты</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:4px;" id="plan-box-desc">Дата согласования рабочего плана подставляется в документ направления в зависимости от курса (года поступления) студента.</div>
+            <div class="plan-grid">
+                <div class="plan-item">
+                    <label id="lbl-plan-1">1 курс (поступление 2025 г.)</label>
+                    <input type="date" id="plan-date-1" value="2025-08-30">
+                </div>
+                <div class="plan-item">
+                    <label id="lbl-plan-2">2 курс (поступление 2024 г.)</label>
+                    <input type="date" id="plan-date-2" value="2024-08-30">
+                </div>
+                <div class="plan-item">
+                    <label id="lbl-plan-3">3 курс (поступление 2023 г.)</label>
+                    <input type="date" id="plan-date-3" value="2023-08-30">
+                </div>
+                <div class="plan-item">
+                    <label id="lbl-plan-4">4 курс (поступление 2022 г.)</label>
+                    <input type="date" id="plan-date-4" value="2022-08-30">
+                </div>
+            </div>
+        </div>
+        <div class="filters" style="padding-top:0;">
+            <div class="filter-row">
+                <select id="ref-filter-group"><option value="all">Все ячейки групп</option></select>
+                <input type="text" id="ref-search" placeholder="Поиск по ФИО или организации...">
+            </div>
+        </div>
+        <div id="referral-groups-list" class="list"></div>
+    </div>
+
+    <!-- ORGANIZATIONS VIEW -->
+    <div id="view-orgs" style="display:none;">
+        <div class="org-filters">
+            <input type="text" id="org-search" placeholder="Поиск организации...">
+        </div>
+        <div id="org-list" class="list"></div>
+    </div>
+
+    <!-- MAP VIEW -->
+    <div id="view-map" style="display:none;">
+        <div id="aktobe-map" style="height:480px;width:100%;border-bottom:1px solid var(--border);"></div>
+        <div style="padding:12px 16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
+                <div style="font-weight:600;">Места практики · Актобе</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="small-btn" id="btn-open-2gis-city" style="background:var(--accent);color:#000;border:none;font-weight:600;">Открыть 2ГИС Актобе</button>
+                    <button class="small-btn" id="btn-open-court" style="border-color:var(--warning);color:var(--warning);">Областной суд</button>
+                </div>
+            </div>
+            <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Нажмите маркер или строку — откроется карточка в 2ГИС. Карта города с точками практики.</div>
+            <div id="map-places"></div>
+        </div>
+    </div>
+
+    <button class="fab" id="add-btn">+</button>
+    <button class="export-btn" id="export-btn">Excel</button>
+
+    <!-- STUDENT MODAL -->
+    <div class="modal" id="student-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="student-modal-title">Добавить студента</h2>
+                <button class="close-btn" data-close="student-modal">&times;</button>
+            </div>
+            <div class="form-group"><label>Фамилия</label><input type="text" id="s-surname"></div>
+            <div class="form-group"><label>Имя</label><input type="text" id="s-name"></div>
+            <div class="form-group"><label>Отчество</label><input type="text" id="s-patronymic"></div>
+            <div class="form-group"><label>Курс (определяет дату согласования рабочего плана)</label>
+                <select id="s-course">
+                    <option value="1">1 курс</option>
+                    <option value="2" selected>2 курс</option>
+                    <option value="3">3 курс</option>
+                    <option value="4">4 курс</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Группа (ячейка сохранения направления)</label><input type="text" id="s-group" placeholder="0-204 / T118 / P207"></div>
+            <div class="form-group"><label>Дата согласования рабочего плана (подставляется по курсу)</label><input type="date" id="s-plan-date"></div>
+            <div class="form-group"><label>Направление</label><select id="s-spec"></select></div>
+            <div class="form-group"><label>Организация</label>
+                <select id="s-org"><option value="">— Выберите организацию —</option></select>
+            </div>
+            <div class="f
