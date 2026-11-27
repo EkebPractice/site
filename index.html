@@ -648,7 +648,7 @@
                     </div>
                     <div class="form-group" style="flex:1;">
                         <label data-at="lblGroup">Группа</label>
-                        <input type="text" id="r-group" placeholder="0-201">
+                        <select id="r-group"></select>
                     </div>
                 </div>
                 <div class="form-group">
@@ -665,7 +665,7 @@
                 </div>
                 <div class="form-group">
                     <label data-at="lblPhone">Телефон</label>
-                    <input type="tel" id="r-phone" placeholder="+7 7__ ___ __ __">
+                    <input type="tel" id="r-phone" inputmode="tel" maxlength="16" autocomplete="tel" placeholder="+7 7XX XXX XX XX">
                 </div>
                 <div style="display:flex;gap:8px;">
                     <div class="form-group" style="flex:1;">
@@ -949,7 +949,15 @@
             const updateRequest = (id, patch) => updateDoc(doc(db, 'ekeb_requests', id), clone(patch));
             const deleteRequest = (id) => deleteDoc(doc(db, 'ekeb_requests', id));
 
-            window.__fbResolve({ loadAll, save, listen, onAuth, register, login, logout, getProfile, loadOrgs, listenRequests, addRequest, updateRequest, deleteRequest });
+            async function saveGroups(list) {
+                await setDoc(doc(db, 'ekeb_public', 'groups'), { list: clone(list), names: list.map(x => x.g), updatedAt: new Date().toISOString() });
+            }
+            async function loadGroups() {
+                const snap = await getDoc(doc(db, 'ekeb_public', 'groups'));
+                return snap.exists() ? (snap.data().list || []) : [];
+            }
+
+            window.__fbResolve({ loadAll, save, listen, onAuth, register, login, logout, getProfile, loadOrgs, listenRequests, addRequest, updateRequest, deleteRequest, saveGroups, loadGroups });
         } catch (e) {
             console.error('Firebase module error:', e);
             window.__fbReject(e);
@@ -1119,6 +1127,7 @@
         function saveData() {
             if (!window.__cloudReady) return;
             const snapshot = { students, orgs: organizations, referrals: savedReferrals, planDates: coursePlanDates };
+            syncPublicGroups();
             window.fbStoreReady
                 .then(store => store.save(snapshot))
                 .catch(e => {
@@ -2208,7 +2217,10 @@
                 lblOrg: 'Организация', lblOrgOther: 'Название организации', lblPhone: 'Телефон', lblDateFrom: 'Желаемое начало',
                 lblDateTo: 'Желаемое окончание', lblComment: 'Комментарий', btnSendReq: 'Отправить заявку', myReq: 'Мои заявки',
                 courseWord: 'курс', choose: '— выберите —', orgOther: 'Другая организация (укажу сам/сама)', iinShort: 'ИИН',
-                iinFormat: 'ИИН должен состоять из 12 цифр', iinInvalid: 'Неверный ИИН — проверьте цифры (не проходит контрольную проверку)', pwShort: 'Пароль — не менее 6 символов', pwMismatch: 'Пароли не совпадают',
+                iinFormat: 'ИИН должен состоять из 12 цифр', iinInvalid: 'Неверный ИИН — проверьте цифры (не проходит контрольную проверку)',
+                phoneInvalid: 'Введите корректный номер телефона: +7 7XX XXX XX XX', nameInvalid: 'ФИО может содержать только буквы, пробелы и дефис',
+                datesInvalid: 'Проверьте даты: начало — не раньше сегодня и не позже чем через год; окончание — не раньше начала, практика не дольше 6 месяцев',
+                datesPair: 'Укажите обе даты или оставьте обе пустыми', noGroups: 'Список групп пока пуст — обратитесь к преподавателю', pwShort: 'Пароль — не менее 6 символов', pwMismatch: 'Пароли не совпадают',
                 nameShort: 'Укажите ФИО полностью', badCreds: 'Неверный ИИН или пароль', exists: 'Этот ИИН уже зарегистрирован — войдите',
                 tooMany: 'Слишком много попыток. Попробуйте позже', network: 'Нет связи с сервером. Проверьте интернет',
                 notEnabled: 'В Firebase не включён вход по паролю (Authentication → Sign-in method → Email/Password)',
@@ -2230,7 +2242,10 @@
                 lblOrg: 'Ұйым', lblOrgOther: 'Ұйымның атауы', lblPhone: 'Телефон', lblDateFrom: 'Қалаған басталу күні',
                 lblDateTo: 'Қалаған аяқталу күні', lblComment: 'Түсініктеме', btnSendReq: 'Өтінімді жіберу', myReq: 'Менің өтінімдерім',
                 courseWord: 'курс', choose: '— таңдаңыз —', orgOther: 'Басқа ұйым (өзім көрсетемін)', iinShort: 'ЖСН',
-                iinFormat: 'ЖСН 12 саннан тұруы керек', iinInvalid: 'ЖСН қате — сандарды тексеріңіз (бақылау тексеруінен өтпейді)', pwShort: 'Құпиясөз кемінде 6 таңбадан тұруы керек', pwMismatch: 'Құпиясөздер сәйкес келмейді',
+                iinFormat: 'ЖСН 12 саннан тұруы керек', iinInvalid: 'ЖСН қате — сандарды тексеріңіз (бақылау тексеруінен өтпейді)',
+                phoneInvalid: 'Телефон нөмірін дұрыс енгізіңіз: +7 7XX XXX XX XX', nameInvalid: 'Аты-жөнінде тек әріптер, бос орын және дефис болуы керек',
+                datesInvalid: 'Күндерді тексеріңіз: басталуы — бүгіннен бұрын емес және бір жылдан кеш емес; аяқталуы — басталуынан бұрын емес, тәжірибе 6 айдан аспауы керек',
+                datesPair: 'Екі күнді де көрсетіңіз немесе екеуін де бос қалдырыңыз', noGroups: 'Топтар тізімі әзірге бос — оқытушыға хабарласыңыз', pwShort: 'Құпиясөз кемінде 6 таңбадан тұруы керек', pwMismatch: 'Құпиясөздер сәйкес келмейді',
                 nameShort: 'Аты-жөніңізді толық жазыңыз', badCreds: 'ЖСН немесе құпиясөз қате', exists: 'Бұл ЖСН тіркелген — жүйеге кіріңіз',
                 tooMany: 'Әрекет тым көп. Кейінірек қайталаңыз', network: 'Сервермен байланыс жоқ. Интернетті тексеріңіз',
                 notEnabled: 'Firebase-те құпиясөзбен кіру қосылмаған (Authentication → Sign-in method → Email/Password)',
@@ -2330,6 +2345,7 @@
                 if (!isValidIin(iin)) return authError(at('iinInvalid'));
                 fullName = $id('auth-fullname').value.trim().replace(/\s+/g, ' ');
                 if (fullName.split(' ').length < 2) return authError(at('nameShort'));
+                if (!NAME_RE.test(fullName)) return authError(at('nameInvalid'));
                 if (pw !== $id('auth-password2').value) return authError(at('pwMismatch'));
             }
             $id('auth-submit').disabled = true;
@@ -2376,10 +2392,31 @@
             location.reload();
         }
 
+        // Список групп для студентов собирается из карточек студентов и публикуется в базу (ekeb_public/groups)
+        function syncPublicGroups() {
+            if (!window.__cloudReady) return;
+            const map = {};
+            students.forEach(st => {
+                const g = String(st.group || '').trim();
+                if (!g) return;
+                const c = String(st.course || '');
+                map[g] = map[g] || {};
+                map[g][c] = (map[g][c] || 0) + 1;
+            });
+            const list = Object.keys(map)
+                .sort((a, b) => a.localeCompare(b, 'ru', { numeric: true }))
+                .map(g => ({ g, c: Object.entries(map[g]).sort((a, b) => b[1] - a[1])[0][0] }));
+            const key = JSON.stringify(list);
+            if (key === window.__lastGroupsKey) return;
+            window.__lastGroupsKey = key;
+            window.fbStoreReady.then(st => st.saveGroups(list)).catch(e => { window.__lastGroupsKey = null; console.error('saveGroups failed:', e); });
+        }
+
         // ---------- преподаватель (админ) ----------
         async function startAdmin(store) {
             hideAuth();
             await loadData();
+            syncPublicGroups();
             document.body.classList.add('role-admin');
             updateLangUI();
             switchTab('students');
@@ -2500,7 +2537,9 @@
             hideAuth();
             document.body.classList.add('role-student');
             try { organizations = await store.loadOrgs(); } catch (e) { console.error(e); organizations = []; }
+            try { groupList = await store.loadGroups(); } catch (e) { console.error(e); groupList = []; }
             $id('r-fullname').value = currentUser.fullName || '';
+            setDateLimits();
             applyAuthLang();
             store.listenRequests(currentUser.uid, (reqs) => { myRequests = reqs; renderMyRequests(); });
         }
@@ -2510,17 +2549,77 @@
             if (el && currentUser) el.textContent = (currentUser.fullName ? currentUser.fullName + ' · ' : '') + at('iinShort') + ' ' + currentUser.iin;
         }
 
+        const NAME_RE = /^[A-Za-zА-Яа-яЁёӘәІіҢңҒғҮүҰұҚқӨөҺһ'’\- ]+$/;
+        let groupList = []; // [{g: '0-201', c: '2'}] — список групп, который публикует преподаватель
+
+        function formatPhone(raw, isPaste) {
+            let d = String(raw).replace(/\D/g, '');
+            if (!d) return '';
+            if (isPaste && d.length === 10) d = '7' + d;
+            if (d[0] === '8') d = '7' + d.slice(1);
+            else if (d[0] !== '7') d = '7' + d;
+            d = d.slice(0, 11);
+            const r = d.slice(1);
+            let out = '+7';
+            if (r.length) out += ' ' + r.slice(0, 3);
+            if (r.length > 3) out += ' ' + r.slice(3, 6);
+            if (r.length > 6) out += ' ' + r.slice(6, 8);
+            if (r.length > 8) out += ' ' + r.slice(8, 10);
+            return out;
+        }
+        // мобильные коды РК (700–708, 747, 771–778) и городской Актобе (7132)
+        function isValidPhone(f) {
+            const d = String(f).replace(/\D/g, '');
+            return /^7(70[0-8]|747|77[1-8])\d{7}$/.test(d) || /^77132\d{6}$/.test(d);
+        }
+
+        function isoLocal(dt) {
+            const p = (n) => String(n).padStart(2, '0');
+            return dt.getFullYear() + '-' + p(dt.getMonth() + 1) + '-' + p(dt.getDate());
+        }
+        function addDays(dt, n) { const x = new Date(dt); x.setDate(x.getDate() + n); return x; }
+        function setDateLimits() {
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const from = $id('r-date-from'), to = $id('r-date-to');
+            from.min = isoLocal(today);
+            from.max = isoLocal(addDays(today, 365));
+            const f = from.value ? new Date(from.value + 'T00:00:00') : today;
+            to.min = isoLocal(f);
+            to.max = isoLocal(addDays(f, 180));
+        }
+        function validateDates(from, to) {
+            if (!from && !to) return null;
+            if (!from || !to) return 'datesPair';
+            const re = /^\d{4}-\d{2}-\d{2}$/;
+            if (!re.test(from) || !re.test(to)) return 'datesInvalid';
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const f = new Date(from + 'T00:00:00'), t = new Date(to + 'T00:00:00');
+            if (isNaN(f) || isNaN(t)) return 'datesInvalid';
+            if (f < today || f > addDays(today, 365)) return 'datesInvalid';
+            if (t < f || t > addDays(f, 180)) return 'datesInvalid';
+            return null;
+        }
+
         function renderPortalSelects() {
-            const specSel = $id('r-spec'), orgSel = $id('r-org'), courseSel = $id('r-course');
+            const specSel = $id('r-spec'), orgSel = $id('r-org'), courseSel = $id('r-course'), groupSel = $id('r-group');
             if (!specSel) return;
             const keep = (sel, v) => { if (v && [...sel.options].some(o => o.value === v)) sel.value = v; };
-            const sv = specSel.value, ov = orgSel.value, cv = courseSel.value || '2';
+            const sv = specSel.value, ov = orgSel.value, gv = groupSel.value;
             courseSel.innerHTML = [1, 2, 3, 4].map(n => `<option value="${n}">${n} ${at('courseWord')}</option>`).join('');
+            courseSel.disabled = true; // курс определяется выбранной группой
+            groupSel.innerHTML = groupList.length
+                ? `<option value="">${at('choose')}</option>` + groupList.map(x => `<option value="${escapeXml(x.g)}">${escapeXml(x.g)}</option>`).join('')
+                : `<option value="">${at('noGroups')}</option>`;
             specSel.innerHTML = `<option value="">${at('choose')}</option>` + SPECIALIZATIONS.map(s => `<option value="${s.id}">${escapeXml(currentLang === 'kk' ? s.kk : s.ru)}</option>`).join('');
             const orgs = [...organizations].sort((a, b) => String(a.name).localeCompare(String(b.name), 'ru'));
             orgSel.innerHTML = `<option value="">${at('choose')}</option>` + orgs.map(o => `<option value="${o.id}">${escapeXml(o.name)}</option>`).join('') + `<option value="other">${at('orgOther')}</option>`;
-            keep(courseSel, cv); keep(specSel, sv); keep(orgSel, ov);
+            keep(groupSel, gv); keep(specSel, sv); keep(orgSel, ov);
+            onGroupChange();
             toggleOtherOrg();
+        }
+        function onGroupChange() {
+            const g = groupList.find(x => x.g === $id('r-group').value);
+            if (g && [...$id('r-course').options].some(o => o.value === String(g.c))) $id('r-course').value = String(g.c);
         }
         function toggleOtherOrg() {
             $id('r-org-other-group').style.display = $id('r-org').value === 'other' ? 'block' : 'none';
@@ -2528,9 +2627,16 @@
 
         async function submitRequest() {
             const fullName = $id('r-fullname').value.trim().replace(/\s+/g, ' ');
-            const group = $id('r-group').value.trim();
+            const group = $id('r-group').value;
             const spec = $id('r-spec').value;
+            if (!groupList.length) return alert(at('noGroups'));
             if (fullName.split(' ').length < 2 || !group || !spec) return alert(at('fillRequired'));
+            if (!NAME_RE.test(fullName)) return alert(at('nameInvalid'));
+            const phone = formatPhone($id('r-phone').value);
+            if (!isValidPhone(phone)) return alert(at('phoneInvalid'));
+            const dateFrom = $id('r-date-from').value, dateTo = $id('r-date-to').value;
+            const dErr = validateDates(dateFrom, dateTo);
+            if (dErr) return alert(at(dErr));
             const orgSel = $id('r-org').value;
             let orgId = null, orgName = '';
             if (orgSel === 'other') {
@@ -2540,11 +2646,11 @@
                 orgId = Number(orgSel);
                 orgName = (getOrg(orgId) || {}).name || '';
             } else return alert(at('orgRequired'));
+            const grp = groupList.find(x => x.g === group);
             const data = {
                 uid: currentUser.uid, iin: currentUser.iin, fullName,
-                course: $id('r-course').value, group, spec, orgId, orgName,
-                phone: $id('r-phone').value.trim(),
-                dateFrom: $id('r-date-from').value, dateTo: $id('r-date-to').value,
+                course: String(grp ? grp.c : $id('r-course').value), group, spec, orgId, orgName,
+                phone, dateFrom, dateTo,
                 comment: $id('r-comment').value.trim(),
                 status: 'new', createdAt: new Date().toISOString()
             };
@@ -2555,6 +2661,7 @@
                 await store.addRequest(data);
                 $id('r-org').value = ''; $id('r-org-other').value = ''; toggleOtherOrg();
                 $id('r-date-from').value = ''; $id('r-date-to').value = ''; $id('r-comment').value = '';
+                setDateLimits();
                 alert(at('sent'));
             } catch (e) {
                 alert(mapAuthError(e));
@@ -2596,6 +2703,16 @@
             $id('btn-logout-student').onclick = doLogout;
             $id('r-org').onchange = toggleOtherOrg;
             $id('r-submit').onclick = submitRequest;
+            $id('r-group').onchange = onGroupChange;
+            const ph = $id('r-phone');
+            ph.addEventListener('focus', () => { if (!ph.value) ph.value = '+7 '; });
+            ph.addEventListener('blur', () => { if (ph.value.replace(/\D/g, '') === '7') ph.value = ''; });
+            ph.addEventListener('input', (e) => {
+                const t = e.inputType || '';
+                if (t.startsWith('delete') && ph.value.replace(/\D/g, '').length <= 1) { ph.value = ''; return; }
+                ph.value = formatPhone(ph.value, t === 'insertFromPaste');
+            });
+            $id('r-date-from').addEventListener('change', setDateLimits);
             $id('req-filter-status').onchange = renderRequests;
             $id('req-search').oninput = renderRequests;
         }
