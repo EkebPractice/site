@@ -708,7 +708,11 @@
                 try {
                     const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout ' + urls[0])), 8000));
                     const mods = await Promise.race([Promise.all(urls.map(u => import(u))), timeout]);
-                    return Object.assign({}, ...mods);
+                    const sdk = Object.assign({}, ...mods);
+                    const app = sdk.initializeApp(firebaseConfig);
+                    const db = sdk.initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+                    const auth = sdk.getAuth(app);
+                    return { sdk, app, db, auth };
                 } catch (e) {
                     lastErr = e;
                     console.warn('Firebase SDK не загрузился с', urls[0], e);
@@ -727,12 +731,10 @@
         };
 
         try {
-            const { initializeApp, initializeFirestore, collection, doc, getDoc, getDocs, setDoc, writeBatch, onSnapshot,
+            const { sdk, db, auth } = await loadSdk();
+            const { collection, doc, getDoc, getDocs, setDoc, writeBatch, onSnapshot,
                     query, where, updateDoc, deleteDoc,
-                    getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } = await loadSdk();
-            const app = initializeApp(firebaseConfig);
-            const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
-            const auth = getAuth(app);
+                    createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } = sdk;
 
             // Коллекции Firestore: одна запись = один документ (id документа = id записи)
             const COLS = { students: 'ekeb_students', orgs: 'ekeb_orgs', referrals: 'ekeb_referrals' };
