@@ -940,6 +940,7 @@
 
             window.__fbResolve({ loadAll, save, listen, onAuth, register, login, logout, getProfile, loadOrgs, listenRequests, addRequest, updateRequest, deleteRequest });
         } catch (e) {
+            console.error('Firebase module error:', e);
             window.__fbReject(e);
         }
     </script>
@@ -2319,8 +2320,8 @@
             try {
                 store = await withTimeout(window.fbStoreReady, 40000, 'Скрипт подключения Firebase не отработал');
             } catch (e) {
-                console.error(e);
-                $id('auth-loading').textContent = at('errLoad');
+                console.error('Firebase init failed:', e);
+                $id('auth-loading').innerHTML = escapeXml(at('errLoad')) + '<br><br><span style="font-size:11px;word-break:break-word;">' + escapeXml(String((e && e.message) || e)) + '</span>';
                 return;
             }
             store.onAuth(async (user) => {
