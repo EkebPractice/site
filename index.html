@@ -353,6 +353,20 @@
             padding: 8px 10px;
             font-size: 13px;
         }
+
+        /* ===== Вход / роли ===== */
+        body:not(.role-admin) #app { display: none; }
+        #student-portal { display: none; }
+        body.role-student #student-portal { display: block; }
+        .auth-wrap { max-width: 480px; margin: 0 auto; padding: 18px 16px; }
+        .auth-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+        .auth-tabs { display: flex; gap: 6px; background: var(--bg); padding: 4px; border-radius: 12px; border: 1px solid var(--border); margin: 14px 0; }
+        .auth-tab { flex: 1; text-align: center; padding: 8px; border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-dim); }
+        .auth-tab.active { background: var(--accent); color: #000; }
+        .auth-error { color: var(--danger); font-size: 12px; margin-top: 8px; min-height: 16px; }
+        .auth-note { color: var(--text-dim); text-align: center; padding: 60px 0; font-size: 14px; }
+        .status-badge { padding: 3px 8px; border-radius: 16px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+        .header-actions { display: flex; align-items: center; gap: 8px; }
     </style>
 </head>
 <body>
@@ -360,9 +374,12 @@
     <div class="header">
         <div class="header-top">
             <div class="logo">EKEB</div>
-            <div class="lang-switch">
-                <button class="lang-btn active" data-lang="ru">RU</button>
-                <button class="lang-btn" data-lang="kk">KK</button>
+            <div class="header-actions">
+                <div class="lang-switch">
+                    <button class="lang-btn active" data-lang="ru">RU</button>
+                    <button class="lang-btn" data-lang="kk">KK</button>
+                </div>
+                <button class="small-btn" id="btn-logout-admin" data-at="logout">Выйти</button>
             </div>
         </div>
         <h1 id="app-title">Практика студентов</h1>
@@ -372,6 +389,7 @@
             <div class="tab" data-tab="referrals" id="tab-referrals">Направления</div>
             <div class="tab" data-tab="orgs" id="tab-orgs">Организации</div>
             <div class="tab" data-tab="map" id="tab-map">Карта 2GIS</div>
+            <div class="tab" data-tab="requests" id="tab-requests">Заявки</div>
         </div>
     </div>
 
@@ -464,6 +482,22 @@
         </div>
     </div>
 
+    <!-- REQUESTS VIEW (заявки студентов, только преподаватель) -->
+    <div id="view-requests" style="display:none;">
+        <div class="filters">
+            <div class="filter-row">
+                <select id="req-filter-status">
+                    <option value="all">Все</option>
+                    <option value="new">На рассмотрении</option>
+                    <option value="approved">Принятые</option>
+                    <option value="rejected">Отклонённые</option>
+                </select>
+                <input type="text" id="req-search" placeholder="Поиск...">
+            </div>
+        </div>
+        <div id="requests-list" class="list"></div>
+    </div>
+
     <button class="fab" id="add-btn">+</button>
     <button class="export-btn" id="export-btn">Excel</button>
 
@@ -544,6 +578,116 @@
 
     </div> <!-- end #app -->
 
+    <!-- ===== ЭКРАН ВХОДА / РЕГИСТРАЦИИ ===== -->
+    <div id="auth-screen">
+        <div class="auth-wrap">
+            <div class="auth-top">
+                <div class="logo">EKEB</div>
+                <div class="lang-switch">
+                    <button class="lang-btn active" data-lang="ru">RU</button>
+                    <button class="lang-btn" data-lang="kk">KK</button>
+                </div>
+            </div>
+            <div id="auth-loading" class="auth-note" data-at="loading">Загрузка…</div>
+            <div id="auth-card" class="card" style="display:none;">
+                <h1 data-at="authTitle">Практика студентов</h1>
+                <div class="subtitle" data-at="authSub">Войдите по ИИН и паролю</div>
+                <div class="auth-tabs">
+                    <div class="auth-tab active" id="auth-tab-login" data-at="tabLogin">Вход</div>
+                    <div class="auth-tab" id="auth-tab-register" data-at="tabRegister">Регистрация</div>
+                </div>
+                <div class="form-group">
+                    <label data-at="lblIin">ИИН (12 цифр)</label>
+                    <input type="text" id="auth-iin" inputmode="numeric" maxlength="12" autocomplete="username" placeholder="000000000000">
+                </div>
+                <div class="form-group" id="auth-name-group" style="display:none;">
+                    <label data-at="lblFullName">ФИО</label>
+                    <input type="text" id="auth-fullname" autocomplete="name" data-at-ph="phFullName" placeholder="Иванов Иван Иванович">
+                </div>
+                <div class="form-group">
+                    <label data-at="lblPassword">Пароль</label>
+                    <input type="password" id="auth-password" autocomplete="current-password">
+                </div>
+                <div class="form-group" id="auth-pw2-group" style="display:none;">
+                    <label data-at="lblPassword2">Повторите пароль</label>
+                    <input type="password" id="auth-password2" autocomplete="new-password">
+                </div>
+                <button type="button" class="btn btn-primary" id="auth-submit">Войти</button>
+                <div class="auth-error" id="auth-error"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== КАБИНЕТ СТУДЕНТА (заявки на практику) ===== -->
+    <div id="student-portal">
+        <div class="header">
+            <div class="header-top">
+                <div class="logo">EKEB</div>
+                <div class="header-actions">
+                    <div class="lang-switch">
+                        <button class="lang-btn active" data-lang="ru">RU</button>
+                        <button class="lang-btn" data-lang="kk">KK</button>
+                    </div>
+                    <button class="small-btn" id="btn-logout-student" data-at="logout">Выйти</button>
+                </div>
+            </div>
+            <h1 data-at="portalTitle">Заявка на практику</h1>
+            <div class="subtitle" id="portal-user"></div>
+        </div>
+        <div class="auth-wrap">
+            <div class="card">
+                <div class="section-title" data-at="reqTitle">Новая заявка</div>
+                <div class="form-group">
+                    <label data-at="lblFullName">ФИО</label>
+                    <input type="text" id="r-fullname">
+                </div>
+                <div class="filter-row" style="display:flex;gap:8px;">
+                    <div class="form-group" style="flex:1;">
+                        <label data-at="lblCourse">Курс</label>
+                        <select id="r-course"></select>
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label data-at="lblGroup">Группа</label>
+                        <input type="text" id="r-group" placeholder="0-201">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-at="lblSpec">Специальность</label>
+                    <select id="r-spec"></select>
+                </div>
+                <div class="form-group">
+                    <label data-at="lblOrg">Организация</label>
+                    <select id="r-org"></select>
+                </div>
+                <div class="form-group" id="r-org-other-group" style="display:none;">
+                    <label data-at="lblOrgOther">Название организации</label>
+                    <input type="text" id="r-org-other">
+                </div>
+                <div class="form-group">
+                    <label data-at="lblPhone">Телефон</label>
+                    <input type="tel" id="r-phone" placeholder="+7 7__ ___ __ __">
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <div class="form-group" style="flex:1;">
+                        <label data-at="lblDateFrom">Желаемое начало</label>
+                        <input type="date" id="r-date-from">
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label data-at="lblDateTo">Желаемое окончание</label>
+                        <input type="date" id="r-date-to">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-at="lblComment">Комментарий</label>
+                    <textarea id="r-comment" rows="3"></textarea>
+                </div>
+                <button type="button" class="btn btn-primary" id="r-submit" data-at="btnSendReq">Отправить заявку</button>
+            </div>
+            <div class="section-title" style="padding:16px 4px 6px;" data-at="myReq">Мои заявки</div>
+            <div id="my-requests" class="list" style="padding:0;"></div>
+        </div>
+    </div>
+
     <!-- ===== Firebase Firestore (modular SDK v10, CDN) ===== -->
     <script>
         window.fbStoreReady = new Promise(function (resolve, reject) {
@@ -554,38 +698,32 @@
     <script type="module">
         // Загрузка SDK с резервными CDN (если один заблокирован — пробуем следующий)
         const SDK_SOURCES = [
-            ['https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js', 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js'],
-            ['https://cdn.jsdelivr.net/npm/firebase@10.14.1/app/+esm', 'https://cdn.jsdelivr.net/npm/firebase@10.14.1/firestore/+esm'],
-            ['https://esm.sh/firebase@10.14.1/app', 'https://esm.sh/firebase@10.14.1/firestore']
+            ['https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js', 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js', 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js'],
+            ['https://cdn.jsdelivr.net/npm/firebase@10.14.1/app/+esm', 'https://cdn.jsdelivr.net/npm/firebase@10.14.1/firestore/+esm', 'https://cdn.jsdelivr.net/npm/firebase@10.14.1/auth/+esm'],
+            ['https://esm.sh/firebase@10.14.1/app', 'https://esm.sh/firebase@10.14.1/firestore', 'https://esm.sh/firebase@10.14.1/auth']
         ];
         async function loadSdk() {
             let lastErr;
-            for (const [appUrl, fsUrl] of SDK_SOURCES) {
+            for (const urls of SDK_SOURCES) {
                 try {
-                    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout ' + appUrl)), 8000));
-                    const [appMod, fsMod] = await Promise.race([Promise.all([import(appUrl), import(fsUrl)]), timeout]);
-                    return { ...appMod, ...fsMod };
+                    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout ' + urls[0])), 8000));
+                    const mods = await Promise.race([Promise.all(urls.map(u => import(u))), timeout]);
+                    return Object.assign({}, ...mods);
                 } catch (e) {
                     lastErr = e;
-                    console.warn('Firebase SDK не загрузился с', appUrl, e);
+                    console.warn('Firebase SDK не загрузился с', urls[0], e);
                 }
             }
             throw new Error('Firebase SDK не загрузился ни с одного CDN: ' + (lastErr && lastErr.message));
         }
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDrhRKtMK3dQNpVPxN_34zqcx6gQlcoKMM",
-            authDomain: "ekeb-practice.firebaseapp.com",
-            projectId: "ekeb-practice",
-            storageBucket: "ekeb-practice.firebasestorage.app",
-            messagingSenderId: "1003105889587",
-            appId: "1:1003105889587:web:f7c5d8da8779f838bf6246"
-        };
-
         try {
-            const { initializeApp, initializeFirestore, collection, doc, getDoc, getDocs, setDoc, writeBatch, onSnapshot } = await loadSdk();
+            const { initializeApp, initializeFirestore, collection, doc, getDoc, getDocs, setDoc, writeBatch, onSnapshot,
+                    query, where, updateDoc, deleteDoc,
+                    getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } = await loadSdk();
             const app = initializeApp(firebaseConfig);
             const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+            const auth = getAuth(app);
 
             // Коллекции Firestore: одна запись = один документ (id документа = id записи)
             const COLS = { students: 'ekeb_students', orgs: 'ekeb_orgs', referrals: 'ekeb_referrals' };
@@ -740,7 +878,67 @@
                 }, (err) => console.error('Firestore listen error (planDates):', err));
             }
 
-            window.__fbResolve({ loadAll, save, listen });
+
+            // ===== Авторизация по ИИН + пароль (Firebase Auth) и заявки =====
+            // ИИН превращается во внутренний «email» вида <ИИН>@ekeb-practice.firebaseapp.com (письма на него не отправляются)
+            const emailOf = (iin) => iin + '@ekeb-practice.firebaseapp.com';
+            let registerGate = null;
+
+            async function register(iin, password, fullName) {
+                let release;
+                registerGate = new Promise(r => { release = r; });
+                try {
+                    const cred = await createUserWithEmailAndPassword(auth, emailOf(iin), password);
+                    await setDoc(doc(db, 'ekeb_users', cred.user.uid), {
+                        iin, fullName, role: 'student', createdAt: new Date().toISOString()
+                    });
+                    return cred.user;
+                } finally {
+                    release();
+                    registerGate = null;
+                }
+            }
+            const login = (iin, password) => signInWithEmailAndPassword(auth, emailOf(iin), password);
+            const logout = () => signOut(auth);
+
+            function onAuth(cb) {
+                return onAuthStateChanged(auth, async (user) => {
+                    if (registerGate) { try { await registerGate; } catch (e) { /* ошибку покажет register() */ } }
+                    cb(user);
+                });
+            }
+
+            async function getProfile(user) {
+                const ref = doc(db, 'ekeb_users', user.uid);
+                const snap = await getDoc(ref);
+                if (snap.exists()) return snap.data();
+                const p = { iin: String(user.email || '').split('@')[0], fullName: '', role: 'student', createdAt: new Date().toISOString() };
+                await setDoc(ref, p);
+                return p;
+            }
+
+            async function loadOrgs() {
+                const s = await getDocs(collection(db, COLS.orgs));
+                return sortArr('orgs', s.docs.map(d => d.data()));
+            }
+
+            // uid = null → все заявки (преподаватель); uid → только свои (студент)
+            function listenRequests(uid, cb) {
+                const col = collection(db, 'ekeb_requests');
+                const q = uid ? query(col, where('uid', '==', uid)) : col;
+                return onSnapshot(q, (snap) => {
+                    cb(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+                }, (err) => console.error('Firestore listen error (requests):', err));
+            }
+            async function addRequest(data) {
+                const ref = doc(collection(db, 'ekeb_requests'));
+                await setDoc(ref, clone(data));
+                return ref.id;
+            }
+            const updateRequest = (id, patch) => updateDoc(doc(db, 'ekeb_requests', id), clone(patch));
+            const deleteRequest = (id) => deleteDoc(doc(db, 'ekeb_requests', id));
+
+            window.__fbResolve({ loadAll, save, listen, onAuth, register, login, logout, getProfile, loadOrgs, listenRequests, addRequest, updateRequest, deleteRequest });
         } catch (e) {
             window.__fbReject(e);
         }
@@ -1054,6 +1252,7 @@
             document.getElementById('lbl-plan-2').textContent = currentLang === 'ru' ? '2 курс (поступление 2024 г.)' : '2 курс (2024 ж. түскен)';
             document.getElementById('lbl-plan-3').textContent = currentLang === 'ru' ? '3 курс (поступление 2023 г.)' : '3 курс (2023 ж. түскен)';
             document.getElementById('lbl-plan-4').textContent = currentLang === 'ru' ? '4 курс (поступление 2022 г.)' : '4 курс (2022 ж. түскен)';
+            applyRequestsLang();
             syncPlanInputsUI();
             populateSelects();
             renderCurrent();
@@ -1120,6 +1319,7 @@
             else if (currentTab === 'referrals') renderReferralsByGroup();
             else if (currentTab === 'orgs') renderOrgs();
             else if (currentTab === 'map') renderMap();
+            else if (currentTab === 'requests') renderRequests();
         }
 
         function renderReferralsByGroup() {
@@ -1397,7 +1597,7 @@
 
         function closeModal(id) {
             document.getElementById(id).classList.remove('show');
-            if (id === 'student-modal') editingStudentId = null;
+            if (id === 'student-modal') { editingStudentId = null; window.__approvingRequestId = null; }
             if (id === 'org-modal') editingOrgId = null;
             if (window.__pendingRemoteRefresh && !document.querySelector('.modal.show')) refreshAfterRemote();
         }
@@ -1463,6 +1663,7 @@
                 students.push(data);
             }
             saveData();
+            if (window.__approvingRequestId) { markRequestApproved(window.__approvingRequestId, data.id); window.__approvingRequestId = null; }
             populateSelects();
             closeModal('student-modal');
             renderCurrent();
@@ -1631,7 +1832,8 @@
             document.getElementById('view-referrals').style.display = tab === 'referrals' ? 'block' : 'none';
             document.getElementById('view-orgs').style.display = tab === 'orgs' ? 'block' : 'none';
             document.getElementById('view-map').style.display = tab === 'map' ? 'block' : 'none';
-            document.getElementById('add-btn').style.display = (tab === 'map' || tab === 'referrals') ? 'none' : 'block';
+            document.getElementById('view-requests').style.display = tab === 'requests' ? 'block' : 'none';
+            document.getElementById('add-btn').style.display = (tab === 'map' || tab === 'referrals' || tab === 'requests') ? 'none' : 'block';
             if (tab === 'map') {
                 renderMap();
                 setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 100);
@@ -1912,10 +2114,10 @@
         // Events
         document.querySelectorAll('.lang-btn').forEach(btn => {
             btn.onclick = () => {
-                document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
                 currentLang = btn.dataset.lang;
+                document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === currentLang));
                 updateLangUI();
+                applyAuthLang();
             };
         });
 
@@ -1984,11 +2186,392 @@
             m.onclick = (e) => { if (e.target === m) closeModal(m.id); };
         });
 
-        // Init
-        loadData().then(() => {
+        // ======================= ВХОД, РОЛИ, ЗАЯВКИ =======================
+        const AT = {
+            ru: {
+                loading: 'Загрузка…', authTitle: 'Практика студентов', authSub: 'Войдите по ИИН и паролю или зарегистрируйтесь',
+                tabLogin: 'Вход', tabRegister: 'Регистрация', lblIin: 'ИИН (12 цифр)', lblFullName: 'ФИО', phFullName: 'Иванов Иван Иванович',
+                lblPassword: 'Пароль', lblPassword2: 'Повторите пароль', btnLogin: 'Войти', btnRegister: 'Зарегистрироваться', logout: 'Выйти',
+                portalTitle: 'Заявка на практику', reqTitle: 'Новая заявка', lblCourse: 'Курс', lblGroup: 'Группа', lblSpec: 'Специальность',
+                lblOrg: 'Организация', lblOrgOther: 'Название организации', lblPhone: 'Телефон', lblDateFrom: 'Желаемое начало',
+                lblDateTo: 'Желаемое окончание', lblComment: 'Комментарий', btnSendReq: 'Отправить заявку', myReq: 'Мои заявки',
+                courseWord: 'курс', choose: '— выберите —', orgOther: 'Другая организация (укажу сам/сама)', iinShort: 'ИИН',
+                iinFormat: 'ИИН должен состоять из 12 цифр', pwShort: 'Пароль — не менее 6 символов', pwMismatch: 'Пароли не совпадают',
+                nameShort: 'Укажите ФИО полностью', badCreds: 'Неверный ИИН или пароль', exists: 'Этот ИИН уже зарегистрирован — войдите',
+                tooMany: 'Слишком много попыток. Попробуйте позже', network: 'Нет связи с сервером. Проверьте интернет',
+                notEnabled: 'В Firebase не включён вход по паролю (Authentication → Sign-in method → Email/Password)',
+                permission: 'Нет доступа к базе данных. Проверьте правила Firestore', generic: 'Ошибка. Попробуйте ещё раз',
+                fillRequired: 'Заполните ФИО (полностью), группу и специальность', orgRequired: 'Выберите организацию или укажите свою',
+                sent: 'Заявка отправлена', noReq: 'Заявок пока нет', stNew: 'На рассмотрении', stApproved: 'Принята', stRejected: 'Отклонена',
+                withdraw: 'Отозвать', confirmWithdraw: 'Отозвать заявку?', note: 'Комментарий преподавателя',
+                tabRequests: 'Заявки', fAll: 'Все', fNew: 'На рассмотрении', fApproved: 'Принятые', fRejected: 'Отклонённые', reqSearch: 'Поиск по ФИО, ИИН, группе...',
+                approve: 'Оформить', reject: 'Отклонить', del: 'Удалить', confirmDel: 'Удалить заявку?', rejectReason: 'Причина отказа (необязательно):',
+                studentAdded: 'Студент добавлен', wishDates: 'Желаемые даты', customOrg: 'своя организация',
+                customOrgHint: 'Студент указал свою организацию: «{n}». Добавьте её на вкладке «Организации», затем выберите в карточке студента.',
+                errLoad: 'Не удалось загрузить данные. Обновите страницу', noRequests: 'Заявок нет'
+            },
+            kk: {
+                loading: 'Жүктелуде…', authTitle: 'Студенттер тәжірибесі', authSub: 'ЖСН және құпиясөз арқылы кіріңіз немесе тіркеліңіз',
+                tabLogin: 'Кіру', tabRegister: 'Тіркелу', lblIin: 'ЖСН (12 сан)', lblFullName: 'Аты-жөні', phFullName: 'Иванов Иван Иванович',
+                lblPassword: 'Құпиясөз', lblPassword2: 'Құпиясөзді қайталаңыз', btnLogin: 'Кіру', btnRegister: 'Тіркелу', logout: 'Шығу',
+                portalTitle: 'Тәжірибеге өтінім', reqTitle: 'Жаңа өтінім', lblCourse: 'Курс', lblGroup: 'Топ', lblSpec: 'Мамандық',
+                lblOrg: 'Ұйым', lblOrgOther: 'Ұйымның атауы', lblPhone: 'Телефон', lblDateFrom: 'Қалаған басталу күні',
+                lblDateTo: 'Қалаған аяқталу күні', lblComment: 'Түсініктеме', btnSendReq: 'Өтінімді жіберу', myReq: 'Менің өтінімдерім',
+                courseWord: 'курс', choose: '— таңдаңыз —', orgOther: 'Басқа ұйым (өзім көрсетемін)', iinShort: 'ЖСН',
+                iinFormat: 'ЖСН 12 саннан тұруы керек', pwShort: 'Құпиясөз кемінде 6 таңбадан тұруы керек', pwMismatch: 'Құпиясөздер сәйкес келмейді',
+                nameShort: 'Аты-жөніңізді толық жазыңыз', badCreds: 'ЖСН немесе құпиясөз қате', exists: 'Бұл ЖСН тіркелген — жүйеге кіріңіз',
+                tooMany: 'Әрекет тым көп. Кейінірек қайталаңыз', network: 'Сервермен байланыс жоқ. Интернетті тексеріңіз',
+                notEnabled: 'Firebase-те құпиясөзбен кіру қосылмаған (Authentication → Sign-in method → Email/Password)',
+                permission: 'Дерекқорға қолжетімділік жоқ. Firestore ережелерін тексеріңіз', generic: 'Қате. Қайта көріңіз',
+                fillRequired: 'Аты-жөніңізді (толық), топты және мамандықты толтырыңыз', orgRequired: 'Ұйымды таңдаңыз немесе өзіңіз көрсетіңіз',
+                sent: 'Өтінім жіберілді', noReq: 'Өтінімдер әлі жоқ', stNew: 'Қаралуда', stApproved: 'Қабылданды', stRejected: 'Қабылданбады',
+                withdraw: 'Қайтарып алу', confirmWithdraw: 'Өтінімді қайтарып алу керек пе?', note: 'Оқытушының түсініктемесі',
+                tabRequests: 'Өтінімдер', fAll: 'Барлығы', fNew: 'Қаралуда', fApproved: 'Қабылданғандар', fRejected: 'Қабылданбағандар', reqSearch: 'Аты-жөні, ЖСН, топ бойынша іздеу...',
+                approve: 'Рәсімдеу', reject: 'Қабылдамау', del: 'Жою', confirmDel: 'Өтінімді жою керек пе?', rejectReason: 'Бас тарту себебі (міндетті емес):',
+                studentAdded: 'Студент қосылды', wishDates: 'Қалаған күндер', customOrg: 'өз ұйымы',
+                customOrgHint: 'Студент өз ұйымын көрсетті: «{n}». Оны «Ұйымдар» бетінде қосып, содан кейін студент карточкасында таңдаңыз.',
+                errLoad: 'Деректерді жүктеу мүмкін болмады. Бетті жаңартыңыз', noRequests: 'Өтінімдер жоқ'
+            }
+        };
+        function at(k) { return (AT[currentLang] && AT[currentLang][k]) || AT.ru[k] || k; }
+        const $id = (x) => document.getElementById(x);
+
+        let authMode = 'login';
+        let currentUser = null;
+        let myRequests = [];
+        let allRequests = [];
+        let appStarted = false;
+
+        function applyAuthLang() {
+            document.querySelectorAll('[data-at]').forEach(el => { el.textContent = at(el.dataset.at); });
+            document.querySelectorAll('[data-at-ph]').forEach(el => { el.placeholder = at(el.dataset.atPh); });
+            updateAuthMode();
+            renderPortalSelects();
+            renderPortalUser();
+            renderMyRequests();
+            applyRequestsLang();
+            if (currentTab === 'requests') renderRequests();
+        }
+
+        function setAuthMode(m) {
+            authMode = m;
+            $id('auth-error').textContent = '';
+            updateAuthMode();
+        }
+        function updateAuthMode() {
+            const reg = authMode === 'register';
+            $id('auth-tab-login').classList.toggle('active', !reg);
+            $id('auth-tab-register').classList.toggle('active', reg);
+            $id('auth-name-group').style.display = reg ? 'block' : 'none';
+            $id('auth-pw2-group').style.display = reg ? 'block' : 'none';
+            $id('auth-submit').textContent = at(reg ? 'btnRegister' : 'btnLogin');
+            $id('auth-password').autocomplete = reg ? 'new-password' : 'current-password';
+        }
+        function authError(msg) { $id('auth-error').textContent = msg || ''; }
+        function mapAuthError(e) {
+            const c = (e && e.code) || '';
+            if (c === 'auth/invalid-credential' || c === 'auth/wrong-password' || c === 'auth/user-not-found' || c === 'auth/invalid-login-credentials') return at('badCreds');
+            if (c === 'auth/email-already-in-use') return at('exists');
+            if (c === 'auth/weak-password') return at('pwShort');
+            if (c === 'auth/too-many-requests') return at('tooMany');
+            if (c === 'auth/network-request-failed') return at('network');
+            if (c === 'auth/operation-not-allowed' || c === 'auth/configuration-not-found') return at('notEnabled');
+            if (c === 'permission-denied' || /permission/i.test((e && e.message) || '')) return at('permission');
+            console.error(e);
+            return at('generic');
+        }
+
+        function showAuthCard() {
+            $id('auth-screen').style.display = 'block';
+            $id('auth-loading').style.display = 'none';
+            $id('auth-card').style.display = 'block';
+            $id('auth-submit').disabled = false;
+        }
+        function hideAuth() { $id('auth-screen').style.display = 'none'; }
+
+        async function submitAuth() {
+            const iin = $id('auth-iin').value.trim();
+            const pw = $id('auth-password').value;
+            authError('');
+            if (!/^\d{12}$/.test(iin)) return authError(at('iinFormat'));
+            if (pw.length < 6) return authError(at('pwShort'));
+            let fullName = '';
+            if (authMode === 'register') {
+                fullName = $id('auth-fullname').value.trim().replace(/\s+/g, ' ');
+                if (fullName.split(' ').length < 2) return authError(at('nameShort'));
+                if (pw !== $id('auth-password2').value) return authError(at('pwMismatch'));
+            }
+            $id('auth-submit').disabled = true;
+            try {
+                const store = await window.fbStoreReady;
+                if (authMode === 'login') await store.login(iin, pw);
+                else await store.register(iin, pw, fullName);
+                // дальше работает onAuth → bootAuth
+            } catch (e) {
+                authError(mapAuthError(e));
+                $id('auth-submit').disabled = false;
+            }
+        }
+
+        async function bootAuth() {
+            applyAuthLang();
+            let store;
+            try {
+                store = await withTimeout(window.fbStoreReady, 40000, 'Скрипт подключения Firebase не отработал');
+            } catch (e) {
+                console.error(e);
+                $id('auth-loading').textContent = at('errLoad');
+                return;
+            }
+            store.onAuth(async (user) => {
+                if (!user) { showAuthCard(); return; }
+                if (appStarted) return;
+                try {
+                    const profile = await store.getProfile(user);
+                    currentUser = { uid: user.uid, iin: profile.iin, fullName: profile.fullName || '', role: profile.role };
+                    appStarted = true;
+                    if (profile.role === 'admin') await startAdmin(store);
+                    else await startStudent(store);
+                } catch (e) {
+                    console.error(e);
+                    showAuthCard();
+                    authError(mapAuthError(e));
+                }
+            });
+        }
+
+        async function doLogout() {
+            try { const store = await window.fbStoreReady; await store.logout(); } catch (e) { console.error(e); }
+            location.reload();
+        }
+
+        // ---------- преподаватель (админ) ----------
+        async function startAdmin(store) {
+            hideAuth();
+            await loadData();
+            document.body.classList.add('role-admin');
             updateLangUI();
             switchTab('students');
-        });
+            store.listenRequests(null, (reqs) => {
+                allRequests = reqs;
+                applyRequestsLang();
+                if (currentTab === 'requests') renderRequests();
+            });
+        }
+
+        function statusInfo(st) {
+            if (st === 'approved') return { text: at('stApproved'), color: 'var(--success)' };
+            if (st === 'rejected') return { text: at('stRejected'), color: 'var(--danger)' };
+            return { text: at('stNew'), color: 'var(--warning)' };
+        }
+        function statusBadge(st) {
+            const s = statusInfo(st);
+            return `<span class="status-badge" style="background:rgba(255,255,255,0.06);color:${s.color};border:1px solid ${s.color};">${escapeXml(s.text)}</span>`;
+        }
+        function specName(id) {
+            const s = SPECIALIZATIONS.find(x => x.id === id);
+            return s ? (currentLang === 'kk' ? s.kk : s.ru) : '';
+        }
+        function reqDate(iso) { return iso ? formatDate(String(iso).slice(0, 10)) : ''; }
+
+        function applyRequestsLang() {
+            const tab = $id('tab-requests');
+            if (!tab) return;
+            const n = allRequests.filter(r => r.status === 'new').length;
+            tab.textContent = at('tabRequests') + (n ? ' (' + n + ')' : '');
+            const f = $id('req-filter-status');
+            if (f) {
+                const v = f.value;
+                f.innerHTML = `<option value="all">${at('fAll')}</option><option value="new">${at('fNew')}</option><option value="approved">${at('fApproved')}</option><option value="rejected">${at('fRejected')}</option>`;
+                f.value = v || 'all';
+            }
+            const s = $id('req-search');
+            if (s) s.placeholder = at('reqSearch');
+        }
+
+        function renderRequests() {
+            const box = $id('requests-list');
+            if (!box) return;
+            const st = $id('req-filter-status').value;
+            const q = ($id('req-search').value || '').toLowerCase().trim();
+            let list = allRequests.filter(r => (st === 'all' || r.status === st));
+            if (q) list = list.filter(r => [r.fullName, r.iin, r.group, r.orgName, r.phone].some(v => String(v || '').toLowerCase().includes(q)));
+            list.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+            if (!list.length) { box.innerHTML = `<div class="empty">${at('noRequests')}</div>`; return; }
+            box.innerHTML = list.map(r => {
+                const dates = (r.dateFrom || r.dateTo)
+                    ? `<div style="font-size:12px;color:var(--text-dim);margin-top:6px;">${at('wishDates')}: ${formatDate(r.dateFrom)} — ${formatDate(r.dateTo)}</div>` : '';
+                const comment = r.comment ? `<div style="font-size:12px;margin-top:6px;">💬 ${escapeXml(r.comment)}</div>` : '';
+                const note = r.adminNote ? `<div style="font-size:12px;margin-top:6px;color:var(--danger);">${escapeXml(r.adminNote)}</div>` : '';
+                const custom = r.orgId ? '' : ` <span style="color:var(--warning);font-size:11px;">(${at('customOrg')})</span>`;
+                const actions = [];
+                if (r.status !== 'approved') actions.push(`<button class="small-btn" style="border-color:var(--success);color:var(--success);" onclick="prefillStudentFromRequest('${r.id}')">${at('approve')}</button>`);
+                if (r.status === 'new') actions.push(`<button class="small-btn" style="border-color:var(--warning);color:var(--warning);" onclick="rejectRequest('${r.id}')">${at('reject')}</button>`);
+                actions.push(`<button class="small-btn" style="border-color:var(--danger);color:var(--danger);" onclick="deleteRequestAdmin('${r.id}')">${at('del')}</button>`);
+                return `<div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="student-name">${escapeXml(r.fullName)}</div>
+                            <div style="font-size:11px;color:var(--text-dim);">${at('iinShort')} ${escapeXml(r.iin)}${r.phone ? ' · ' + escapeXml(r.phone) : ''}</div>
+                        </div>
+                        <span class="course-badge">${escapeXml(r.course)} ${at('courseWord')} · ${escapeXml(r.group)}</span>
+                    </div>
+                    <div class="specialization">${escapeXml(specName(r.spec))}</div>
+                    <div class="practice-place">${escapeXml(r.orgName)}${custom}</div>
+                    ${dates}${comment}${note}
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap;">
+                        <div>${statusBadge(r.status)} <span style="font-size:11px;color:var(--text-dim);margin-left:6px;">${reqDate(r.createdAt)}</span>${r.status === 'approved' ? ` <span style="font-size:11px;color:var(--success);">· ${at('studentAdded')}</span>` : ''}</div>
+                        <div class="org-actions" style="margin-top:0;">${actions.join('')}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function prefillStudentFromRequest(id) {
+            const r = allRequests.find(x => x.id === id);
+            if (!r) return;
+            if (!r.orgId && r.orgName) alert(at('customOrgHint').replace('{n}', r.orgName));
+            openStudentModal(false);
+            const parts = String(r.fullName || '').trim().split(/\s+/);
+            const course = r.course || '2';
+            $id('s-surname').value = parts[0] || '';
+            $id('s-name').value = parts[1] || '';
+            $id('s-patronymic').value = parts.slice(2).join(' ');
+            $id('s-course').value = course;
+            $id('s-group').value = r.group || '';
+            $id('s-plan-date').value = getPlanDateForCourse(course);
+            $id('s-spec').value = r.spec || '';
+            $id('s-org').value = r.orgId ? String(r.orgId) : '';
+            $id('s-depart-date').value = r.dateFrom || '';
+            $id('s-return-date').value = r.dateTo || '';
+            window.__approvingRequestId = id;
+        }
+
+        function markRequestApproved(id, studentId) {
+            window.fbStoreReady
+                .then(s => s.updateRequest(id, { status: 'approved', studentId: studentId, handledAt: new Date().toISOString() }))
+                .catch(e => { console.error(e); alert(at('generic')); });
+        }
+        function rejectRequest(id) {
+            const note = prompt(at('rejectReason'), '');
+            if (note === null) return;
+            window.fbStoreReady
+                .then(s => s.updateRequest(id, { status: 'rejected', adminNote: note.trim(), handledAt: new Date().toISOString() }))
+                .catch(e => { console.error(e); alert(at('generic')); });
+        }
+        function deleteRequestAdmin(id) {
+            if (!confirm(at('confirmDel'))) return;
+            window.fbStoreReady.then(s => s.deleteRequest(id)).catch(e => { console.error(e); alert(at('generic')); });
+        }
+
+        // ---------- студент ----------
+        async function startStudent(store) {
+            hideAuth();
+            document.body.classList.add('role-student');
+            try { organizations = await store.loadOrgs(); } catch (e) { console.error(e); organizations = []; }
+            $id('r-fullname').value = currentUser.fullName || '';
+            applyAuthLang();
+            store.listenRequests(currentUser.uid, (reqs) => { myRequests = reqs; renderMyRequests(); });
+        }
+
+        function renderPortalUser() {
+            const el = $id('portal-user');
+            if (el && currentUser) el.textContent = (currentUser.fullName ? currentUser.fullName + ' · ' : '') + at('iinShort') + ' ' + currentUser.iin;
+        }
+
+        function renderPortalSelects() {
+            const specSel = $id('r-spec'), orgSel = $id('r-org'), courseSel = $id('r-course');
+            if (!specSel) return;
+            const keep = (sel, v) => { if (v && [...sel.options].some(o => o.value === v)) sel.value = v; };
+            const sv = specSel.value, ov = orgSel.value, cv = courseSel.value || '2';
+            courseSel.innerHTML = [1, 2, 3, 4].map(n => `<option value="${n}">${n} ${at('courseWord')}</option>`).join('');
+            specSel.innerHTML = `<option value="">${at('choose')}</option>` + SPECIALIZATIONS.map(s => `<option value="${s.id}">${escapeXml(currentLang === 'kk' ? s.kk : s.ru)}</option>`).join('');
+            const orgs = [...organizations].sort((a, b) => String(a.name).localeCompare(String(b.name), 'ru'));
+            orgSel.innerHTML = `<option value="">${at('choose')}</option>` + orgs.map(o => `<option value="${o.id}">${escapeXml(o.name)}</option>`).join('') + `<option value="other">${at('orgOther')}</option>`;
+            keep(courseSel, cv); keep(specSel, sv); keep(orgSel, ov);
+            toggleOtherOrg();
+        }
+        function toggleOtherOrg() {
+            $id('r-org-other-group').style.display = $id('r-org').value === 'other' ? 'block' : 'none';
+        }
+
+        async function submitRequest() {
+            const fullName = $id('r-fullname').value.trim().replace(/\s+/g, ' ');
+            const group = $id('r-group').value.trim();
+            const spec = $id('r-spec').value;
+            if (fullName.split(' ').length < 2 || !group || !spec) return alert(at('fillRequired'));
+            const orgSel = $id('r-org').value;
+            let orgId = null, orgName = '';
+            if (orgSel === 'other') {
+                orgName = $id('r-org-other').value.trim();
+                if (!orgName) return alert(at('orgRequired'));
+            } else if (orgSel) {
+                orgId = Number(orgSel);
+                orgName = (getOrg(orgId) || {}).name || '';
+            } else return alert(at('orgRequired'));
+            const data = {
+                uid: currentUser.uid, iin: currentUser.iin, fullName,
+                course: $id('r-course').value, group, spec, orgId, orgName,
+                phone: $id('r-phone').value.trim(),
+                dateFrom: $id('r-date-from').value, dateTo: $id('r-date-to').value,
+                comment: $id('r-comment').value.trim(),
+                status: 'new', createdAt: new Date().toISOString()
+            };
+            const btn = $id('r-submit');
+            btn.disabled = true;
+            try {
+                const store = await window.fbStoreReady;
+                await store.addRequest(data);
+                $id('r-org').value = ''; $id('r-org-other').value = ''; toggleOtherOrg();
+                $id('r-date-from').value = ''; $id('r-date-to').value = ''; $id('r-comment').value = '';
+                alert(at('sent'));
+            } catch (e) {
+                alert(mapAuthError(e));
+            }
+            btn.disabled = false;
+        }
+
+        function renderMyRequests() {
+            const box = $id('my-requests');
+            if (!box) return;
+            const list = [...myRequests].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+            if (!list.length) { box.innerHTML = `<div class="empty">${at('noReq')}</div>`; return; }
+            box.innerHTML = list.map(r => `<div class="card">
+                <div class="card-header">
+                    <div class="student-name">${escapeXml(r.orgName)}</div>
+                    ${statusBadge(r.status)}
+                </div>
+                <div class="specialization">${escapeXml(specName(r.spec))}</div>
+                <div style="font-size:12px;color:var(--text-dim);">${escapeXml(r.course)} ${at('courseWord')} · ${escapeXml(r.group)} · ${reqDate(r.createdAt)}</div>
+                ${(r.dateFrom || r.dateTo) ? `<div style="font-size:12px;color:var(--text-dim);margin-top:4px;">${at('wishDates')}: ${formatDate(r.dateFrom)} — ${formatDate(r.dateTo)}</div>` : ''}
+                ${r.adminNote ? `<div style="font-size:12px;margin-top:6px;color:var(--danger);">${at('note')}: ${escapeXml(r.adminNote)}</div>` : ''}
+                ${r.status === 'new' ? `<div class="org-actions"><button class="small-btn" style="border-color:var(--danger);color:var(--danger);" onclick="withdrawRequest('${r.id}')">${at('withdraw')}</button></div>` : ''}
+            </div>`).join('');
+        }
+        function withdrawRequest(id) {
+            if (!confirm(at('confirmWithdraw'))) return;
+            window.fbStoreReady.then(s => s.deleteRequest(id)).catch(e => { console.error(e); alert(mapAuthError(e)); });
+        }
+
+        function setupAuthUI() {
+            $id('auth-tab-login').onclick = () => setAuthMode('login');
+            $id('auth-tab-register').onclick = () => setAuthMode('register');
+            $id('auth-submit').onclick = submitAuth;
+            ['auth-iin', 'auth-fullname', 'auth-password', 'auth-password2'].forEach(id => {
+                $id(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAuth(); });
+            });
+            $id('auth-iin').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 12); });
+            $id('btn-logout-admin').onclick = doLogout;
+            $id('btn-logout-student').onclick = doLogout;
+            $id('r-org').onchange = toggleOtherOrg;
+            $id('r-submit').onclick = submitRequest;
+            $id('req-filter-status').onchange = renderRequests;
+            $id('req-search').oninput = renderRequests;
+        }
+
+        // Init
+        setupAuthUI();
+        bootAuth();
     </script>
 </body>
 </html>
