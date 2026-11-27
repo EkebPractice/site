@@ -399,8 +399,10 @@
             <div class="filter-row">
                 <select id="filter-course">
                     <option value="all">Все курсы</option>
+                    <option value="1">1 курс</option>
                     <option value="2">2 курс</option>
                     <option value="3">3 курс</option>
+                    <option value="4">4 курс</option>
                 </select>
                 <select id="filter-spec">
                     <option value="all">Все направления</option>
@@ -543,6 +545,7 @@
             </div>
             <button class="btn btn-primary" id="save-student">Сохранить</button>
             <button class="btn btn-secondary" data-close="student-modal">Отмена</button>
+            <button class="btn btn-danger" id="delete-student" style="display:none;">Удалить студента</button>
         </div>
     </div>
 
@@ -1174,6 +1177,19 @@
                 const el = document.getElementById('plan-date-' + c);
                 if (el) el.value = coursePlanDates[c] || '';
             });
+            updatePlanLabels();
+        }
+
+        // Год поступления в подписи берётся из введённой даты курса
+        function updatePlanLabels() {
+            ['1', '2', '3', '4'].forEach(c => {
+                const lbl = document.getElementById('lbl-plan-' + c);
+                if (!lbl) return;
+                const inp = document.getElementById('plan-date-' + c);
+                const y = String((inp && inp.value) || coursePlanDates[c] || '').slice(0, 4);
+                const yy = /^\d{4}$/.test(y) ? y : '____';
+                lbl.textContent = currentLang === 'ru' ? `${c} курс (поступление ${yy} г.)` : `${c} курс (${yy} ж. түскен)`;
+            });
         }
 
         function savePlanDatesFromUI() {
@@ -1181,9 +1197,25 @@
                 const el = document.getElementById('plan-date-' + c);
                 if (el && el.value) coursePlanDates[c] = el.value;
             });
+            // У студентов и сохранённых направлений дата могла быть записана раньше — предлагаем привести к датам курсов
+            const staleStudents = students.filter(st => st.planDate && st.planDate !== getPlanDateForCourse(st.course));
+            const staleRefs = savedReferrals.filter(r => r.planDate && r.planDate !== getPlanDateForCourse(r.course));
+            let applied = 0;
+            if (staleStudents.length || staleRefs.length) {
+                const msg = currentLang === 'ru'
+                    ? `У ${staleStudents.length} студентов и ${staleRefs.length} сохранённых направлений дата согласования плана отличается от новой даты их курса.\n\nОбновить её у всех? (ОК — обновить, Отмена — оставить как есть)`
+                    : `${staleStudents.length} студентте және ${staleRefs.length} сақталған жолдамада жоспарды келісу күні курстың жаңа күнінен өзгеше.\n\nБарлығында жаңарту керек пе? (ОК — жаңарту, Бас тарту — қалдыру)`;
+                if (confirm(msg)) {
+                    staleStudents.forEach(st => { st.planDate = getPlanDateForCourse(st.course); });
+                    staleRefs.forEach(r => { r.planDate = getPlanDateForCourse(r.course); });
+                    applied = staleStudents.length + staleRefs.length;
+                }
+            }
             saveData();
-            renderReferralsByGroup();
-            alert(currentLang === 'ru' ? 'Даты согласования рабочего плана по курсам сохранены!' : 'Курстар бойынша жұмыс жоспарын келісу күндері сақталды!');
+            updatePlanLabels();
+            renderCurrent();
+            alert((currentLang === 'ru' ? 'Даты согласования рабочего плана по курсам сохранены!' : 'Курстар бойынша жұмыс жоспарын келісу күндері сақталды!')
+                + (applied ? (currentLang === 'ru' ? ` Обновлено записей: ${applied}.` : ` Жаңартылған жазбалар: ${applied}.`) : ''));
         }
 
         function recordReferralInGroupCell(student, langMode) {
@@ -1269,10 +1301,6 @@
             document.getElementById('plan-box-title').textContent = currentLang === 'ru' ? '📅 Согласование рабочего учебного плана по курсам (дата в направлении)' : '📅 Курстар бойынша жұмыс оқу жоспарын келісу (жолдамадағы күн)';
             document.getElementById('plan-box-desc').textContent = currentLang === 'ru' ? 'Дата согласования рабочего плана подставляется в документ направления в зависимости от курса (года поступления) студента.' : 'Жұмыс жоспарын келісу күні студенттің курсына (оқуға түскен жылына) байланысты жолдама құжатына қойылады.';
             document.getElementById('btn-save-plans').textContent = currentLang === 'ru' ? 'Сохранить даты' : 'Күндерді сақтау';
-            document.getElementById('lbl-plan-1').textContent = currentLang === 'ru' ? '1 курс (поступление 2025 г.)' : '1 курс (2025 ж. түскен)';
-            document.getElementById('lbl-plan-2').textContent = currentLang === 'ru' ? '2 курс (поступление 2024 г.)' : '2 курс (2024 ж. түскен)';
-            document.getElementById('lbl-plan-3').textContent = currentLang === 'ru' ? '3 курс (поступление 2023 г.)' : '3 курс (2023 ж. түскен)';
-            document.getElementById('lbl-plan-4').textContent = currentLang === 'ru' ? '4 курс (поступление 2022 г.)' : '4 курс (2022 ж. түскен)';
             applyRequestsLang();
             syncPlanInputsUI();
             populateSelects();
@@ -1543,6 +1571,7 @@
                             <span style="font-size:11px; color:var(--text-dim); margin-right:auto;">📄 ${currentLang === 'ru' ? 'Направление:' : 'Жолдама:'}</span>
                             <button type="button" class="ref-btn" onclick="downloadReferralById(${s.id}, 'ru')">Word (РУС)</button>
                             <button type="button" class="ref-btn kk" onclick="downloadReferralById(${s.id}, 'kk')">Word (ҚАЗ)</button>
+                            <button type="button" class="ref-btn" style="color:var(--danger);border-color:rgba(255,82,82,0.45);" onclick="deleteStudentById(${s.id})">🗑 ${currentLang === 'ru' ? 'Удалить' : 'Жою'}</button>
                         </div>
                     `;
                     card.onclick = () => editStudent(s.id);
@@ -1607,6 +1636,9 @@
                 document.getElementById('s-return-time').value = '';
             }
             document.getElementById('s-ref-lang').value = currentLang;
+            const delBtn = document.getElementById('delete-student');
+            delBtn.style.display = edit ? 'block' : 'none';
+            delBtn.textContent = currentLang === 'ru' ? 'Удалить студента' : 'Студентті жою';
             document.getElementById('student-modal').classList.add('show');
             document.getElementById('student-modal-title').textContent = edit ? (currentLang === 'ru' ? 'Редактировать студента' : 'Студентті өңдеу') : (currentLang === 'ru' ? 'Добавить студента' : 'Студент қосу');
         }
@@ -1655,6 +1687,21 @@
             document.getElementById('o-address').value = o.address || '';
             document.getElementById('o-phone').value = o.phone || '';
             openOrgModal(true);
+        }
+
+        function deleteStudentById(id, fromModal) {
+            const st = students.find(x => x.id === id);
+            if (!st) return;
+            const name = `${st.surname || ''} ${st.name || ''}`.trim();
+            const msg = currentLang === 'ru'
+                ? `Удалить студента «${name}»? Это действие нельзя отменить.`
+                : `Студентті жою: «${name}»? Бұл әрекетті қайтару мүмкін емес.`;
+            if (!confirm(msg)) return;
+            students = students.filter(x => x.id !== id);
+            saveData();
+            if (fromModal) closeModal('student-modal');
+            populateSelects();
+            renderCurrent();
         }
 
         function saveStudent() {
@@ -2186,6 +2233,7 @@
             generateStudentReferralDocx(st, langMode);
         };
         document.getElementById('save-student').onclick = saveStudent;
+        document.getElementById('delete-student').onclick = () => { if (editingStudentId) deleteStudentById(editingStudentId, true); };
         document.getElementById('save-org').onclick = saveOrg;
 
         document.getElementById('btn-open-2gis-city').onclick = () => {
@@ -2702,6 +2750,10 @@
             $id('btn-logout-admin').onclick = doLogout;
             $id('btn-logout-student').onclick = doLogout;
             $id('r-org').onchange = toggleOtherOrg;
+            ['1', '2', '3', '4'].forEach(c => {
+                const el = $id('plan-date-' + c);
+                if (el) { el.addEventListener('input', updatePlanLabels); el.addEventListener('change', updatePlanLabels); }
+            });
             $id('r-submit').onclick = submitRequest;
             $id('r-group').onchange = onGroupChange;
             const ph = $id('r-phone');
