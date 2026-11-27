@@ -717,6 +717,15 @@
             throw new Error('Firebase SDK не загрузился ни с одного CDN: ' + (lastErr && lastErr.message));
         }
 
+        const firebaseConfig = {
+            apiKey: "AIzaSyDrhRKtMK3dQNpVPxN_34zqcx6gQlcoKMM",
+            authDomain: "ekeb-practice.firebaseapp.com",
+            projectId: "ekeb-practice",
+            storageBucket: "ekeb-practice.firebasestorage.app",
+            messagingSenderId: "1003105889587",
+            appId: "1:1003105889587:web:f7c5d8da8779f838bf6246"
+        };
+
         try {
             const { initializeApp, initializeFirestore, collection, doc, getDoc, getDocs, setDoc, writeBatch, onSnapshot,
                     query, where, updateDoc, deleteDoc,
