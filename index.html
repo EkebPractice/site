@@ -2208,7 +2208,7 @@
                 lblOrg: 'Организация', lblOrgOther: 'Название организации', lblPhone: 'Телефон', lblDateFrom: 'Желаемое начало',
                 lblDateTo: 'Желаемое окончание', lblComment: 'Комментарий', btnSendReq: 'Отправить заявку', myReq: 'Мои заявки',
                 courseWord: 'курс', choose: '— выберите —', orgOther: 'Другая организация (укажу сам/сама)', iinShort: 'ИИН',
-                iinFormat: 'ИИН должен состоять из 12 цифр', pwShort: 'Пароль — не менее 6 символов', pwMismatch: 'Пароли не совпадают',
+                iinFormat: 'ИИН должен состоять из 12 цифр', iinInvalid: 'Неверный ИИН — проверьте цифры (не проходит контрольную проверку)', pwShort: 'Пароль — не менее 6 символов', pwMismatch: 'Пароли не совпадают',
                 nameShort: 'Укажите ФИО полностью', badCreds: 'Неверный ИИН или пароль', exists: 'Этот ИИН уже зарегистрирован — войдите',
                 tooMany: 'Слишком много попыток. Попробуйте позже', network: 'Нет связи с сервером. Проверьте интернет',
                 notEnabled: 'В Firebase не включён вход по паролю (Authentication → Sign-in method → Email/Password)',
@@ -2230,7 +2230,7 @@
                 lblOrg: 'Ұйым', lblOrgOther: 'Ұйымның атауы', lblPhone: 'Телефон', lblDateFrom: 'Қалаған басталу күні',
                 lblDateTo: 'Қалаған аяқталу күні', lblComment: 'Түсініктеме', btnSendReq: 'Өтінімді жіберу', myReq: 'Менің өтінімдерім',
                 courseWord: 'курс', choose: '— таңдаңыз —', orgOther: 'Басқа ұйым (өзім көрсетемін)', iinShort: 'ЖСН',
-                iinFormat: 'ЖСН 12 саннан тұруы керек', pwShort: 'Құпиясөз кемінде 6 таңбадан тұруы керек', pwMismatch: 'Құпиясөздер сәйкес келмейді',
+                iinFormat: 'ЖСН 12 саннан тұруы керек', iinInvalid: 'ЖСН қате — сандарды тексеріңіз (бақылау тексеруінен өтпейді)', pwShort: 'Құпиясөз кемінде 6 таңбадан тұруы керек', pwMismatch: 'Құпиясөздер сәйкес келмейді',
                 nameShort: 'Аты-жөніңізді толық жазыңыз', badCreds: 'ЖСН немесе құпиясөз қате', exists: 'Бұл ЖСН тіркелген — жүйеге кіріңіз',
                 tooMany: 'Әрекет тым көп. Кейінірек қайталаңыз', network: 'Сервермен байланыс жоқ. Интернетті тексеріңіз',
                 notEnabled: 'Firebase-те құпиясөзбен кіру қосылмаған (Authentication → Sign-in method → Email/Password)',
@@ -2279,6 +2279,24 @@
             $id('auth-submit').textContent = at(reg ? 'btnRegister' : 'btnLogin');
             $id('auth-password').autocomplete = reg ? 'new-password' : 'current-password';
         }
+        // Проверка структуры ИИН: дата рождения (ГГММДД), признак века/пола (1–6) и контрольная цифра
+        function isValidIin(iin) {
+            if (!/^\d{12}$/.test(iin)) return false;
+            const d = iin.split('').map(Number);
+            const mm = d[2] * 10 + d[3], dd = d[4] * 10 + d[5], c = d[6];
+            if (c < 1 || c > 6) return false;
+            const year = (c <= 2 ? 1800 : c <= 4 ? 1900 : 2000) + d[0] * 10 + d[1];
+            const dt = new Date(year, mm - 1, dd);
+            if (dt.getFullYear() !== year || dt.getMonth() !== mm - 1 || dt.getDate() !== dd) return false;
+            if (dt > new Date()) return false;
+            let k = d.slice(0, 11).reduce((a, v, i) => a + v * (i + 1), 0) % 11;
+            if (k === 10) {
+                const w = [3, 4, 5, 6, 7, 8, 9, 10, 11, 1, 2];
+                k = d.slice(0, 11).reduce((a, v, i) => a + v * w[i], 0) % 11;
+                if (k === 10) return false;
+            }
+            return k === d[11];
+        }
         function authError(msg) { $id('auth-error').textContent = msg || ''; }
         function mapAuthError(e) {
             const c = (e && e.code) || '';
@@ -2309,6 +2327,7 @@
             if (pw.length < 6) return authError(at('pwShort'));
             let fullName = '';
             if (authMode === 'register') {
+                if (!isValidIin(iin)) return authError(at('iinInvalid'));
                 fullName = $id('auth-fullname').value.trim().replace(/\s+/g, ' ');
                 if (fullName.split(' ').length < 2) return authError(at('nameShort'));
                 if (pw !== $id('auth-password2').value) return authError(at('pwMismatch'));
